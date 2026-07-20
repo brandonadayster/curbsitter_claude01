@@ -34,6 +34,7 @@ export interface GenerationResult {
   cyclesCreated: number;
   tasksCreated: number;
   skippedExisting: number;
+  skippedInactive: number;
 }
 
 export async function generateCyclesForDate(collectionDate: string): Promise<GenerationResult> {
@@ -47,10 +48,35 @@ export async function generateCyclesForDate(collectionDate: string): Promise<Gen
     .eq("properties.status", "active");
   if (error) throw new Error(`Schedule lookup failed: ${error.message}`);
 
-  const result: GenerationResult = { cyclesCreated: 0, tasksCreated: 0, skippedExisting: 0 };
+  // Pause/cancel gate: a property is only serviced when it has an active,
+  // non-cancelling subscription. Paused, cancelled, or cancel-at-renewal
+  // subscriptions are skipped so no cycle is generated for them.
+  const propertyIds = [...new Set((schedules ?? []).map((s) => s.property_id))];
+  const servicedPropertyIds = new Set<string>();
+  if (propertyIds.length > 0) {
+    const { data: subs, error: subsError } = await supabase
+      .from("subscriptions")
+      .select("property_id")
+      .in("property_id", propertyIds)
+      .eq("status", "active")
+      .eq("cancel_at_period_end", false);
+    if (subsError) throw new Error(`Subscription lookup failed: ${subsError.message}`);
+    for (const sub of subs ?? []) servicedPropertyIds.add(sub.property_id);
+  }
+
+  const result: GenerationResult = {
+    cyclesCreated: 0,
+    tasksCreated: 0,
+    skippedExisting: 0,
+    skippedInactive: 0,
+  };
   const rolloutDate = previousDay(collectionDate);
 
   for (const schedule of schedules ?? []) {
+    if (!servicedPropertyIds.has(schedule.property_id)) {
+      result.skippedInactive += 1;
+      continue;
+    }
     const { data: cycle, error: cycleError } = await supabase
       .from("collection_cycles")
       .insert({

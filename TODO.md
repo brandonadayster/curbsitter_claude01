@@ -43,12 +43,12 @@ partially complete; the note says what remains.
 - [x] P4-06 Build exception, recheck, and safety incident workflows. *(Admin triage page with resolve/retry/schedule-recheck, customer exception/hauler-delay emails via outbox, runner safety-incident reports; delayed-hauler loop verified end-to-end 2026-07-20.)*
 
 ## Phase 5
-- [ ] P5-01 Build customer overview and multi-property views. *(Minimal authenticated /app status page exists.)*
-- [ ] P5-02 Build instruction/access update with step-up verification.
-- [ ] P5-03 Build history, exceptions, and signed-photo views.
-- [ ] P5-04 Build pause/resume/cancel and Stripe portal.
-- [ ] P5-05 Build email/SMS outbox, retries, consent, and preferences. *(Outbox table + consent records exist; sender worker and preferences UI remain.)*
-- [ ] P5-06 Build support tickets. *(Table + contact-form intake exist; customer/admin ticket UI remains.)*
+- [x] P5-01 Build customer overview and multi-property views. *(Portal shell + nav; overview with next service and per-property cards, all RLS-scoped.)*
+- [x] P5-02 Build instruction/access update with step-up verification. *(Instruction editing + write-only encrypted access-secret replace with manager check; a customer-facing step-up *reveal* is deferred — access is intentionally write-only from the portal.)*
+- [x] P5-03 Build history, exceptions, and signed-photo views. *(Service history with cycles, customer-visible exceptions + resolutions, and RLS-authorized short-lived signed proof photos; verified own=200 / foreign=404.)*
+- [x] P5-04 Build pause/resume/cancel and Stripe portal. *(Pause/resume/cancel-at-renewal, audited; gates cycle generation — integration-tested; Stripe Customer Portal when configured, honest fallback otherwise.)*
+- [x] P5-05 Build email/SMS outbox, retries, consent, and preferences. *(Sender worker with template rendering, Resend/dev provider, exponential backoff + claim; cron route guarded by CRON_SECRET; admin process-now; consent-append preferences. Twilio SMS delivery still off pending provider wiring.)*
+- [x] P5-06 Build support tickets. *(Customer create/list via RLS; admin queue with audited status updates.)*
 
 ## Phase 6
 - [ ] P6-01 Build referral codes, attribution, credits, and fraud review. *(Codes + attribution live in waitlist/onboarding; credit accrual on qualifying cycle, caps, and fraud review remain.)*

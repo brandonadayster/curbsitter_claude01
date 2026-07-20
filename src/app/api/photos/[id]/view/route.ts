@@ -4,16 +4,22 @@ import { apiError } from "@/lib/api";
 import { getSessionInfo } from "@/lib/auth";
 import { mintSignedPhotoUrl } from "@/lib/photos";
 
-/** JSON variant: returns a short-lived signed URL for an authorized photo. */
+/**
+ * Redirect variant for plain links in the portal: authorizes, mints a
+ * short-lived signed URL, and 302s to it. The signed URL itself expires; the
+ * portal link stays stable and re-authorizes on every view.
+ */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const session = await getSessionInfo();
-  if (!session) return apiError(401, "unauthenticated", "Sign in to continue.");
+  if (!session) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   const signed = await mintSignedPhotoUrl(id, session);
   if (!signed) return apiError(404, "not_found", "Photo not found.");
-  return NextResponse.json(signed);
+  return NextResponse.redirect(signed.url);
 }
