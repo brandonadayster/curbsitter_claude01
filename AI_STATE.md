@@ -47,5 +47,8 @@ CREATE TABLE referral_credits (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-## 5. Active Task
+## 5. Completed Task
 Implement strict cryptographic signature verification on the Stripe webhook (src/app/api/webhooks/stripe/route.ts) to process checkout.session.completed events, issue -$20 Customer Balance Transactions to the referrer, and log the transaction in the referral_credits table.
+
+## 6. Develop the referral UI component (QR code + share link) for the customer dashboard.
+Build out the gamification elements for the frontend dashboard. Implement React component code for a sleek "Referral Hub" that displays the QR code, the trackable share link, and the current credit balance. The referral hub should be accessible from the sidebar navigation, with a preview card included on the main page that defaults to an advertisement-style card promoting the 'Give $20, Get $20' deal.

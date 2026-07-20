@@ -10,5 +10,5 @@ CurbSitter replaces the operational friction and visual clutter of local solid w
 
 ## 3. Quantitative Success Criteria
 * **Onboarding Friction:** Complete transaction time from landing hero to verified Stripe receipt must average under 120 seconds.
-* **Runner Verification Speed:** Processing, renaming, and uploading a field photo to Supabase storage must execute in under 3.5 seconds over cellular data.
+* **Runner Verification Speed:** Processing, renaming, and uploading a field photo to Supabase storage must execute in under 3.5 seconds over cellular data. If in an area with no service, the data upload must store in local memory/storage until service resumes, allowing any stored data to instantly upload in the background - requiring zero interaction from the field worker.
 * **Delivery Precision:** Twilio SMS payloads must deliver matching photo tokens within 60 seconds of a runner logging a completed stop.
