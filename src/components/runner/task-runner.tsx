@@ -48,6 +48,7 @@ export function TaskRunner({ task }: { task: TaskView }) {
   const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
 
   const proofType = task.taskType === "rollout" ? "rollout_proof" : "return_proof";
+  const requiresProof = task.taskType === "rollout" || task.taskType === "return";
   const hasProof = photos.some((photo) => photo.type === proofType);
   const terminal = status === "completed" || status === "cancelled" || status === "exception";
 
@@ -127,7 +128,11 @@ export function TaskRunner({ task }: { task: TaskView }) {
         ← My route
       </Link>
       <h1 className="mt-3 text-3xl font-bold tracking-tight">
-        {task.taskType === "rollout" ? "Roll out bins" : "Return bins"}
+        {task.taskType === "rollout"
+          ? "Roll out bins"
+          : task.taskType === "recheck"
+            ? "Recheck: collection & return"
+            : "Return bins"}
       </h1>
       <p className="mt-1 text-xl">{task.address}</p>
       <p className="mt-2 text-lg">
@@ -244,14 +249,18 @@ export function TaskRunner({ task }: { task: TaskView }) {
               </button>
               {hasProof ? (
                 <p className="text-lg text-success">✓ Proof photo uploaded</p>
-              ) : (
+              ) : requiresProof ? (
                 <p className="text-base text-muted">
                   A proof photo is required before you can complete this stop.
+                </p>
+              ) : (
+                <p className="text-base text-muted">
+                  Photos are optional for this check — add one if it helps document the outcome.
                 </p>
               )}
               <button
                 type="button"
-                disabled={pending || !hasProof}
+                disabled={pending || (requiresProof && !hasProof)}
                 onClick={async () => {
                   const ok = await transition("completed", { idempotencyKey });
                   if (ok) router.push("/runner");

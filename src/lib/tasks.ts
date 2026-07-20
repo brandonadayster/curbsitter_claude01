@@ -135,6 +135,37 @@ export async function applyTaskTransition(options: {
       description: options.exceptionDescription ?? null,
       customer_visible: true,
     });
+
+    // Real-time exception reporting: queue the customer email. A hauler miss
+    // is communicated as "collection delayed", not a service failure.
+    const { data: property } = await supabase
+      .from("properties")
+      .select("account_id")
+      .eq("id", task.property_id)
+      .maybeSingle();
+    if (property) {
+      const { data: payer } = await supabase
+        .from("contacts")
+        .select("email")
+        .eq("account_id", property.account_id)
+        .eq("kind", "payer")
+        .maybeSingle();
+      if (payer?.email) {
+        const isHaulerDelay =
+          options.exceptionType === "hauler_missed" ||
+          options.exceptionType === "partial_collection";
+        await supabase.from("notification_outbox").insert({
+          template_id: isHaulerDelay ? "hauler_delay" : "exception_reported",
+          channel: "email",
+          recipient: payer.email,
+          payload: {
+            task_id: task.id,
+            exception_type: options.exceptionType,
+            description: options.exceptionDescription ?? null,
+          },
+        });
+      }
+    }
   }
 
   if (task.cycle_id) {

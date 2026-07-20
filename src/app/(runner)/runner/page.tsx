@@ -72,7 +72,11 @@ export default async function RunnerHomePage() {
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xl font-bold">
                       {task.sequence ? `#${task.sequence} · ` : ""}
-                      {task.task_type === "rollout" ? "Roll out" : "Return"}
+                      {task.task_type === "rollout"
+                        ? "Roll out"
+                        : task.task_type === "recheck"
+                          ? "Recheck"
+                          : "Return"}
                     </span>
                     <span
                       className={`rounded-full border px-3 py-1 text-base font-medium ${
@@ -96,6 +100,13 @@ export default async function RunnerHomePage() {
           })}
         </ul>
       )}
+
+      <Link
+        href="/runner/incidents/new"
+        className="mt-8 block rounded-xl border border-warning/60 px-6 py-3.5 text-center text-lg font-semibold text-warning"
+      >
+        Report a safety incident
+      </Link>
 
       {recentDone && recentDone.length > 0 ? (
         <section className="mt-10">

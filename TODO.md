@@ -40,7 +40,7 @@ partially complete; the note says what remains.
 - [x] P4-03 Build runner route/task UI. *(Assigned-only stops, large controls, audited access reveal, full rollout cycle driven end-to-end 2026-07-20.)*
 - [x] P4-04 Build photo capture/compression/private upload/retry. *(Camera capture → private bucket via server; server-enforced proof-before-complete; client-side compression and offline retry queue remain for pilot hardening.)*
 - [x] P4-05 Build explicit state machine and event log. *(Transition table + cycle sync unit-tested; append-only task_events; idempotent completion keys.)*
-- [ ] P4-06 Build exception, recheck, and safety incident workflows. *(Runner exception reporting with cycle-state mapping done; recheck scheduling, incident reports, and admin resolution flow remain.)*
+- [x] P4-06 Build exception, recheck, and safety incident workflows. *(Admin triage page with resolve/retry/schedule-recheck, customer exception/hauler-delay emails via outbox, runner safety-incident reports; delayed-hauler loop verified end-to-end 2026-07-20.)*
 
 ## Phase 5
 - [ ] P5-01 Build customer overview and multi-property views. *(Minimal authenticated /app status page exists.)*
@@ -71,4 +71,4 @@ partially complete; the note says what remains.
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P4-06`
+`CURRENT: P5-01`

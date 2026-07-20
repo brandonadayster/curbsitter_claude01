@@ -99,18 +99,13 @@ export default async function CyclesPage() {
       </div>
 
       {exceptions && exceptions.length > 0 ? (
-        <section className="mt-8">
-          <h2 className="text-xl font-bold">Open exceptions</h2>
-          <ul className="mt-3 space-y-2">
-            {exceptions.map((exception) => (
-              <li key={exception.id} className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-base">
-                <strong>{exception.exception_type.replace(/_/g, " ")}</strong>
-                {exception.description ? ` — ${exception.description}` : ""}{" "}
-                <span className="text-muted">({exception.severity})</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <p className="mt-8 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-base">
+          {exceptions.length} open exception{exceptions.length === 1 ? "" : "s"} —{" "}
+          <a href="/admin/exceptions" className="font-semibold underline">
+            triage them in Exceptions
+          </a>
+          .
+        </p>
       ) : null}
 
       <section className="mt-8">

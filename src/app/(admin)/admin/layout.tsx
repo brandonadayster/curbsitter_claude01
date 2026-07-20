@@ -7,6 +7,7 @@ const ADMIN_NAV = [
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/route-cells", label: "Route Cells" },
   { href: "/admin/cycles", label: "Cycles & Routes" },
+  { href: "/admin/exceptions", label: "Exceptions" },
 ];
 
 export default async function AdminLayout({
