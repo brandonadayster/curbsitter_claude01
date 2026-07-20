@@ -71,4 +71,4 @@ partially complete; the note says what remains.
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P5-01`
+`CURRENT: P6-01`
