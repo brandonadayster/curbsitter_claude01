@@ -26,8 +26,17 @@ export default async function CustomerHomePage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <h1 className="text-4xl font-bold tracking-tight">Your account</h1>
-      <p className="mt-2 text-lg text-muted">{user.email}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight">Your account</h1>
+          <p className="mt-2 text-lg text-muted">{user.email}</p>
+        </div>
+        <form action="/auth/signout" method="post">
+          <button type="submit" className="text-base text-muted underline hover:text-text">
+            Sign out
+          </button>
+        </form>
+      </div>
 
       <section className="mt-8">
         <h2 className="text-2xl font-bold">Service status</h2>

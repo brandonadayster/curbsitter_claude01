@@ -15,15 +15,15 @@ partially complete; the note says what remains.
 - [x] P1-01 Create core migrations and enums. *(Migration history reset pre-production; legacy prototype schema archived in docs/archive/legacy-migrations.)*
 - [x] P1-02 Implement auth roles/memberships. *(profiles + platform_role, accounts, account_members, auto-profile trigger.)*
 - [x] P1-03 Implement RLS and policy tests. *(Default-deny + explicit verb grants; `scripts/test_rls.sh` proves no cross-account/runner leakage. Expand into fuller policy suite during Phase 4.)*
-- [ ] P1-04 Create private storage and signed URL service. *(Private buckets exist with zero client policies; signed-URL mint endpoint lands with runner photo flow in Phase 4.)*
-- [ ] P1-05 Isolate/encrypt access data and audit privileged actions. *(Isolation + AES-256-GCM encryption done; step-up reveal + audit_log wiring remain.)*
+- [x] P1-04 Create private storage and signed URL service. *(Authorized short-lived signed URLs via /api/photos/[id]/url; uploads server-mediated to the private bucket.)*
+- [x] P1-05 Isolate/encrypt access data and audit privileged actions. *(AES-256-GCM at rest, task-scoped audited reveal for assigned runners; customer step-up re-verification remains a Phase 5 item.)*
 
 ## Phase 2
 - [x] P2-01 Build design tokens/public shell. *(FRONTEND_GUIDELINES tokens in globals.css, header/footer, reduced-motion, focus states.)*
 - [x] P2-02 Build core marketing pages and content. *(All APP_FLOW public routes with truthful copy; legal pages are marked drafts pending counsel.)*
 - [x] P2-03 Build address normalization and route-cell engine. *(Geocode + point-in-cell for active results; zip buckets only for non-active outcomes; every check recorded.)*
 - [x] P2-04 Build waitlist and consent flow. *(Versioned consent rows, share codes, referral attribution, outbox-queued confirmation.)*
-- [ ] P2-05 Build route-cell admin. *(Route cells seeded and queryable; admin UI not built.)*
+- [x] P2-05 Build route-cell admin. *(State/capacity management with waiting-lead counts and audit entries; public site reflects changes.)*
 - [ ] P2-06 Add SEO, structured data, analytics events, and accessibility checks. *(Metadata/sitemap/robots done; structured data, analytics events, and automated axe checks remain.)*
 
 ## Phase 3
@@ -32,15 +32,15 @@ partially complete; the note says what remains.
 - [x] P3-03 Build secure access/hazard intake. *(Secrets split from stage data at the boundary, encrypted at rest, never echoed to the client.)*
 - [x] P3-04 Build server-side pricing/config. *(`buildQuote` from typed config; complexity flags review, never a surcharge; unit-tested.)*
 - [x] P3-05 Integrate Stripe and idempotent webhooks. *(Checkout for monthly card / quarterly prepaid ACH / one-time; webhook_events ledger; needs test keys in .env.local to exercise end-to-end.)*
-- [ ] P3-06 Create serviceability review state and communications. *(pending_serviceability_review state + welcome email queued; admin review queue and outbox sender worker remain.)*
+- [x] P3-06 Create serviceability review state and communications. *(Admin review queue approves/declines with audited decisions and outbox-queued customer emails; the outbox sender worker itself is P5-05.)*
 
 ## Phase 4
-- [ ] P4-01 Build cycle/task generation.
-- [ ] P4-02 Build admin review and route builder.
-- [ ] P4-03 Build runner route/task UI.
-- [ ] P4-04 Build photo capture/compression/private upload/retry.
-- [ ] P4-05 Build explicit state machine and event log. *(Schema for cycles/tasks/task_events/exceptions exists with RLS; application logic remains.)*
-- [ ] P4-06 Build exception, recheck, and safety incident workflows.
+- [x] P4-01 Build cycle/task generation. *(Per-date generation from verified schedules of active properties; idempotent; Phoenix service windows.)*
+- [x] P4-02 Build admin review and route builder. *(Manual route build per D-011: date+type → published route, address-ordered, runner-assigned.)*
+- [x] P4-03 Build runner route/task UI. *(Assigned-only stops, large controls, audited access reveal, full rollout cycle driven end-to-end 2026-07-20.)*
+- [x] P4-04 Build photo capture/compression/private upload/retry. *(Camera capture → private bucket via server; server-enforced proof-before-complete; client-side compression and offline retry queue remain for pilot hardening.)*
+- [x] P4-05 Build explicit state machine and event log. *(Transition table + cycle sync unit-tested; append-only task_events; idempotent completion keys.)*
+- [ ] P4-06 Build exception, recheck, and safety incident workflows. *(Runner exception reporting with cycle-state mapping done; recheck scheduling, incident reports, and admin resolution flow remain.)*
 
 ## Phase 5
 - [ ] P5-01 Build customer overview and multi-property views. *(Minimal authenticated /app status page exists.)*
@@ -71,4 +71,4 @@ partially complete; the note says what remains.
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P2-05`
+`CURRENT: P4-06`

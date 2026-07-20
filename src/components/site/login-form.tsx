@@ -6,6 +6,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [usePassword, setUsePassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -20,6 +22,15 @@ export function LoginForm() {
     setError("");
     try {
       const supabase = createSupabaseBrowserClient();
+      if (usePassword) {
+        const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        if (authError) {
+          setError("That email and password combination didn't work.");
+          return;
+        }
+        window.location.href = "/app";
+        return;
+      }
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
@@ -30,7 +41,7 @@ export function LoginForm() {
       }
       setSent(true);
     } catch {
-      setError("We couldn't send the sign-in link. Please check your connection and try again.");
+      setError("We couldn't sign you in. Please check your connection and try again.");
     } finally {
       setPending(false);
     }
@@ -62,6 +73,21 @@ export function LoginForm() {
           onChange={(event) => setEmail(event.target.value)}
         />
       </div>
+      {usePassword ? (
+        <div>
+          <label htmlFor="login-password" className="mb-1 block text-base font-medium">
+            Password
+          </label>
+          <input
+            id="login-password"
+            type="password"
+            autoComplete="current-password"
+            className="w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-lg text-text focus:border-cyan"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
+      ) : null}
       {error ? (
         <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-base font-medium text-danger">
           {error}
@@ -72,7 +98,14 @@ export function LoginForm() {
         disabled={pending}
         className="rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg transition-colors hover:bg-cyan-strong disabled:opacity-60"
       >
-        {pending ? "Sending…" : "Email Me a Sign-In Link"}
+        {pending ? "Signing in…" : usePassword ? "Sign In" : "Email Me a Sign-In Link"}
+      </button>
+      <button
+        type="button"
+        className="text-left text-base text-muted underline hover:text-text"
+        onClick={() => setUsePassword((value) => !value)}
+      >
+        {usePassword ? "Use an emailed sign-in link instead" : "Sign in with a password instead"}
       </button>
     </form>
   );
