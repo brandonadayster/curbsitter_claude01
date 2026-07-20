@@ -133,6 +133,15 @@ alter table public.audit_log enable row level security;
 -- reads) stay completely inaccessible to client roles.
 -- ---------------------------------------------------------------------------
 
+grant usage on schema public to anon, authenticated, service_role;
+
+-- The service role bypasses RLS but still needs verb grants in this image.
+-- Server code using it performs its own authorization (see header comment).
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
+
 grant select on public.plans, public.services, public.route_cells, public.service_areas
   to anon, authenticated;
 
