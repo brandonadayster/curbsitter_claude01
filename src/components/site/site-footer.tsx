@@ -8,18 +8,18 @@ const FOOTER_GROUPS = [
     links: [
       { href: "/how-it-works", label: "How It Works" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/one-time-trash-day", label: "One-Time Trash Day" },
-      { href: "/bulk-pickup-coordination", label: "Bulk Pickup Coordination" },
+      { href: "/trash-day-ondemand", label: "One-Time Trash Day" },
+      { href: "/bulk-trash-pickup", label: "Bulk Pickup Coordination" },
       { href: "/service-areas", label: "Service Areas" },
     ],
   },
   {
     heading: "Who We Help",
     links: [
-      { href: "/for-seniors", label: "Seniors & Caregivers" },
-      { href: "/for-snowbirds", label: "Snowbirds & Travelers" },
-      { href: "/for-vacation-rentals", label: "Vacation Rentals" },
-      { href: "/for-hoas", label: "HOAs & Communities" },
+      { href: "/seniors", label: "Seniors & Caregivers" },
+      { href: "/snowbirds", label: "Snowbirds & Travelers" },
+      { href: "/vacation-rentals", label: "Vacation Rentals" },
+      { href: "/hoa", label: "HOAs & Communities" },
     ],
   },
   {

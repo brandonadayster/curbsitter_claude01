@@ -16,19 +16,19 @@ export default function WhoWeHelpPage() {
       </PageHero>
       <Section>
         <div className="grid gap-6 sm:grid-cols-2">
-          <InfoCard title="Seniors & mobility-limited homeowners" href="/for-seniors">
+          <InfoCard title="Seniors & mobility-limited homeowners" href="/seniors">
             Keep your independence without the heavy, risky driveway trips. A family member can
             pay and receive proof while you stay in charge.
           </InfoCard>
-          <InfoCard title="Snowbirds, travelers & second-home owners" href="/for-snowbirds">
+          <InfoCard title="Snowbirds, travelers & second-home owners" href="/snowbirds">
             Remote control, pause and resume, shorter curb exposure, and photo proof from
             anywhere.
           </InfoCard>
-          <InfoCard title="Vacation rentals & property managers" href="/for-vacation-rentals">
+          <InfoCard title="Vacation rentals & property managers" href="/vacation-rentals">
             Multi-property visibility, guest-turnover reliability, and one accountable local
             vendor for bin logistics.
           </InfoCard>
-          <InfoCard title="HOAs & community managers" href="/for-hoas">
+          <InfoCard title="HOAs & community managers" href="/hoa">
             Fewer bins left out, help for older and seasonal residents, cleaner curb appearance,
             and clear reports.
           </InfoCard>

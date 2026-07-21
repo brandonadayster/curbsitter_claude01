@@ -69,13 +69,13 @@ CTA: Check My Address
 | `/how-it-works` | Service windows, proof, exceptions, first-service review |
 | `/pricing` | Plans, one-time services, complexity policy, no-surprise pricing |
 | `/service-areas` | Active/waitlist route cells and address check |
-| `/service-areas/prescott-az` | Core local SEO page |
-| `/for-seniors` | Safety, independence, caregiver purchase |
-| `/for-snowbirds` | Remote oversight, pause/resume, proof |
-| `/for-vacation-rentals` | Multi-property, turnover exceptions, overflow reporting |
-| `/for-hoas` | Pilot, resident opt-in, selected coverage, reporting |
-| `/one-time-trash-day` | $39 service, active-route/capacity rules, and proof |
-| `/bulk-pickup-coordination` | Coordination scope, exclusions, and physical-placement quote flow |
+| `/service-areas/prescott` | Core local SEO page |
+| `/seniors` | Safety, independence, caregiver purchase |
+| `/snowbirds` | Remote oversight, pause/resume, proof |
+| `/vacation-rentals` | Multi-property, turnover exceptions, overflow reporting |
+| `/hoa` | Pilot, resident opt-in, selected coverage, reporting |
+| `/trash-day-ondemand` | $39 service, active-route/capacity rules, and proof |
+| `/bulk-trash-pickup` | Coordination scope, exclusions, and physical-placement quote flow |
 | `/faq` | Objection and policy handling |
 | `/contact` | Sales/support pathways |
 | `/waitlist` | Route progress and referral sharing |

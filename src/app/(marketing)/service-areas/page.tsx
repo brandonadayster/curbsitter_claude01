@@ -91,7 +91,7 @@ export default async function ServiceAreasPage() {
       <Section title="Prescott and beyond">
         <p className="text-lg text-muted">
           Our launch market is{" "}
-          <Link href="/service-areas/prescott-az" className="text-cyan underline">
+          <Link href="/service-areas/prescott" className="text-cyan underline">
             Prescott, Arizona
           </Link>
           . Prescott Valley, Chino Valley, and Dewey-Humboldt are expansion markets — join the

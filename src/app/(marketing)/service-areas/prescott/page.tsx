@@ -50,12 +50,12 @@ export default function PrescottPage() {
             </Link>
           </li>
           <li>
-            <Link href="/for-seniors" className="text-cyan underline">
+            <Link href="/seniors" className="text-cyan underline">
               Trash-day help for Prescott seniors
             </Link>
           </li>
           <li>
-            <Link href="/for-hoas" className="text-cyan underline">
+            <Link href="/hoa" className="text-cyan underline">
               Options for Prescott HOAs and community managers
             </Link>
           </li>

@@ -32,22 +32,22 @@ const HOW_IT_WORKS = [
 
 const AUDIENCES = [
   {
-    href: "/for-seniors",
+    href: "/seniors",
     title: "Seniors & Caregivers",
     body: "Keep independence without the risky driveway trips. Family can pay and receive proof.",
   },
   {
-    href: "/for-snowbirds",
+    href: "/snowbirds",
     title: "Snowbirds & Travelers",
     body: "Remote oversight, pause and resume, and photo proof while you're away.",
   },
   {
-    href: "/for-vacation-rentals",
+    href: "/vacation-rentals",
     title: "Vacation Rentals & Managers",
     body: "Multi-property visibility, turnover reliability, and one accountable local vendor.",
   },
   {
-    href: "/for-hoas",
+    href: "/hoa",
     title: "HOAs & Communities",
     body: "Fewer bins left out, help for older and seasonal residents, and clear reports.",
   },

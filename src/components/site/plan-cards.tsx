@@ -96,7 +96,7 @@ export function PlanCards() {
             ))}
           </ul>
           <Link
-            href="/for-hoas"
+            href="/hoa"
             className="mt-6 rounded-lg border border-border px-5 py-3 text-center text-lg font-semibold transition-colors hover:border-cyan/60"
           >
             Request a Proposal

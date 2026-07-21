@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { href: "/pricing", label: "Pricing" },
   { href: "/service-areas", label: "Service Areas" },
   { href: "/who-we-help", label: "Who We Help" },
-  { href: "/for-hoas", label: "For HOAs" },
+  { href: "/hoa", label: "For HOAs" },
   { href: "/faq", label: "FAQ" },
 ];
 
