@@ -179,6 +179,28 @@ export async function applyTaskTransition(options: {
         .from("collection_cycles")
         .update({ state: nextCycleState })
         .eq("id", task.cycle_id);
+
+      // Qualifying event for referrals (D-014): the account's first paid cycle
+      // reaching a clean `completed` state. Errors here must not fail the
+      // runner's completion, so they're caught and logged.
+      if (nextCycleState === "completed") {
+        try {
+          const { data: property } = await supabase
+            .from("properties")
+            .select("account_id")
+            .eq("id", task.property_id)
+            .maybeSingle();
+          if (property) {
+            const { maybeQualifyReferralForAccount } = await import("@/lib/referrals");
+            await maybeQualifyReferralForAccount(property.account_id);
+          }
+        } catch (error) {
+          console.error(
+            "referral qualification failed:",
+            error instanceof Error ? error.message : error,
+          );
+        }
+      }
     }
   }
 

@@ -51,12 +51,12 @@ partially complete; the note says what remains.
 - [x] P5-06 Build support tickets. *(Customer create/list via RLS; admin queue with audited status updates.)*
 
 ## Phase 6
-- [ ] P6-01 Build referral codes, attribution, credits, and fraud review. *(Codes + attribution live in waitlist/onboarding; credit accrual on qualifying cycle, caps, and fraud review remain.)*
-- [ ] P6-02 Build One-Time Trash Day order flow with active-route/capacity validation. *(Selectable in onboarding; capacity validation remains.)*
-- [ ] P6-03 Build Bulk Pickup Coordination request, authorization, status, and provider-note flow.
-- [ ] P6-04 Build separately quoted physical-placement review flow behind admin approval; keep Home Watch/Host Shield disabled.
-- [ ] P6-05 Build route/cell KPI dashboard.
-- [ ] P6-06 Build HOA/portfolio basics.
+- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested.)*
+- [x] P6-02 Build One-Time Trash Day order flow with active-route/capacity validation. *(Checkout blocks one-time unless the address resolved to an active cell with capacity; verified 409 on a waitlist route.)*
+- [x] P6-03 Build Bulk Pickup Coordination request, authorization, status, and provider-note flow. *(Authenticated customer request -> order; admin eligibility/status/provider-note flow. Public non-customers still routed via contact.)*
+- [x] P6-04 Build separately quoted physical-placement review flow behind admin approval; keep Home Watch/Host Shield disabled. *(Placement is a distinct admin-quoted order_item, never implied/auto-charged; FEATURES flags keep Home Watch/Host Shield off.)*
+- [x] P6-05 Build route/cell KPI dashboard. *(Reliability (proof rate, exceptions), route-economics (active properties, monthly-equivalent MRR by cell), exceptions-by-category — internal inputs, not public metrics.)*
+- [x] P6-06 Build HOA/portfolio basics. *(Admin accounts view grouping HOA/portfolio vs individual with property counts, active subs, and completed-cycle totals.)*
 
 ## Phase 7
 - [ ] P7-01 Complete security/privacy review.
@@ -71,4 +71,4 @@ partially complete; the note says what remains.
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P6-01`
+`CURRENT: P7-01`

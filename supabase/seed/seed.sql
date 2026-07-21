@@ -11,6 +11,7 @@ insert into public.services (id, public_name, starting_price_cents, pricing_kind
 values
   ('one_time_trash_day', 'One-Time Trash Day', 3900, 'fixed', true),
   ('bulk_pickup_coordination', 'Bulk Pickup Coordination', 4900, 'starting_at', true),
+  ('bulk_physical_placement', 'Bulk Physical Placement', 0, 'quote', true),
   ('community_portfolio', 'Community & Portfolio', 0, 'quote', true)
 on conflict (id) do nothing;
 

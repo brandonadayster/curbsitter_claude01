@@ -6,8 +6,12 @@ const ADMIN_NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/route-cells", label: "Route Cells" },
+  { href: "/admin/accounts", label: "Accounts" },
   { href: "/admin/cycles", label: "Cycles & Routes" },
   { href: "/admin/exceptions", label: "Exceptions" },
+  { href: "/admin/orders", label: "Bulk Orders" },
+  { href: "/admin/referrals", label: "Referrals" },
+  { href: "/admin/reports", label: "Reports" },
   { href: "/admin/notifications", label: "Outbox" },
   { href: "/admin/support", label: "Support" },
 ];

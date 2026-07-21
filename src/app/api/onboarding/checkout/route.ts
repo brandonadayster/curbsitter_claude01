@@ -52,6 +52,21 @@ export async function POST(request: NextRequest) {
     return apiError(409, "bin_limit", "The bin count exceeds this plan's limit. Adjust the plan or bin count.");
   }
 
+  // One-Time Trash Day is only available inside an active route cell with
+  // capacity (D-020). Subscriptions still go through admin serviceability
+  // review, so this extra gate applies only to the immediate one-time service.
+  if (quote.serviceChoice === "one_time_trash_day") {
+    const { checkOneTimeCapacity } = await import("@/lib/capacity");
+    const capacity = await checkOneTimeCapacity(draft.eligibility_check_id);
+    if (!capacity.ok) {
+      const message =
+        capacity.reason === "at_capacity"
+          ? "This route is at capacity for one-time service right now. Try a subscription or check back soon."
+          : "One-Time Trash Day is only available on active routes. Your address isn't on one yet — join the waitlist and we'll let you know when it opens.";
+      return apiError(409, "one_time_unavailable", message);
+    }
+  }
+
   // Record consent before payment (SECURITY_PRIVACY.md).
   const payerEmail = stage2Check.data.payer.email.toLowerCase();
   const consentBase = {
