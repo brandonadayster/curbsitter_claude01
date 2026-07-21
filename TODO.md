@@ -60,7 +60,7 @@ partially complete; the note says what remains.
 
 ## Phase 7
 - [ ] P7-01 Complete security/privacy review.
-- [ ] P7-02 Complete accessibility/mobile/offline QA.
+- [~] P7-02 Complete accessibility/mobile/offline QA. *(Playwright suite (24 tests) covers address check, waitlist, buy-for-someone-else, role sign-ins + least-privilege, billing pause/resume, signed-photo authz, runner completion with proof, incident report, admin exception resolve + recheck, reports; axe WCAG 2.2 A/AA on 5 public pages; mobile-viewport runner check. Wired into CI with local Supabase. Offline/service-worker QA and manual screen-reader passes remain.)*
 - [ ] P7-03 Complete backup/restore and incident drill.
 - [ ] P7-04 Replace all placeholders with verified production content.
 - [ ] P7-05 Verify legal/insurance/policy/SMS requirements.
