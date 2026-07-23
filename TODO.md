@@ -61,11 +61,18 @@ partially complete; the note says what remains.
 ## Phase 7
 - [ ] P7-01 Complete security/privacy review.
 - [~] P7-02 Complete accessibility/mobile/offline QA. *(Playwright suite (24 tests) covers address check, waitlist, buy-for-someone-else, role sign-ins + least-privilege, billing pause/resume, signed-photo authz, runner completion with proof, incident report, admin exception resolve + recheck, reports; axe WCAG 2.2 A/AA on 5 public pages; mobile-viewport runner check. Wired into CI with local Supabase. Offline/service-worker QA and manual screen-reader passes remain.)*
-- [ ] P7-03 Complete backup/restore and incident drill.
-- [ ] P7-04 Replace all placeholders with verified production content.
-- [ ] P7-05 Verify legal/insurance/policy/SMS requirements.
-- [ ] P7-06 Run shadow routes and staff training.
-- [ ] P7-07 Soft launch and monitor pilot metrics.
+- [ ] P7-03 Complete backup/restore and incident drill. *(Draft runbooks ready: docs/operations/backup-and-restore-runbook.md + incident-response-plan.md; execution/drills + Supabase PITR config are owner tasks.)*
+- [ ] P7-04 Replace all placeholders with verified production content. *(Checklist ready: docs/operations/production-content-readiness-checklist.md; owner supplies real content/imagery, prod infra, and live keys.)*
+- [ ] P7-05 Verify legal/insurance/policy/SMS requirements. *(Full draft package for counsel: docs/legal/ (ToS, Privacy, SMS, ACH, referral, e-comms, accessibility) + docs/operations/insurance-and-legal-checklist.md; awaiting attorney/broker finalization.)*
+- [ ] P7-06 Run shadow routes and staff training. *(Plan ready: docs/operations/shadow-route-and-staff-training-plan.md; execution is owner/staff.)*
+- [ ] P7-07 Soft launch and monitor pilot metrics. *(Plan ready: docs/operations/soft-launch-and-pilot-metrics-plan.md; run after a route cell is activated.)*
+
+Operational policy drafts also cover the remaining OPEN_DECISIONS items:
+route-cell activation (#3), complexity/access adjustments (#4), bulk-pickup SOP
+(#5), referral fraud/expiration (#6), data retention (#7), worker & field
+standards (#8), customer-service SLA (#9), HOA pilot pricing/reporting (#11),
+pause/cancel cutoff (#12), and the optional founder offer (#2). See
+docs/operations/README.md and docs/legal/README.md.
 
 ## Current ticket
 
