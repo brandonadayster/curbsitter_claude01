@@ -59,7 +59,7 @@ partially complete; the note says what remains.
 - [x] P6-06 Build HOA/portfolio basics. *(Admin accounts view grouping HOA/portfolio vs individual with property counts, active subs, and completed-cycle totals.)*
 
 ## Phase 7
-- [ ] P7-01 Complete security/privacy review.
+- [~] P7-01 Complete security/privacy review. *(Audit in docs/SECURITY_REVIEW.md: RLS/authz, service-role gating, webhook idempotency, access-secret handling, private-photo signed access, input validation, and PII logging all verified sound. Fixed 3 defense-in-depth gaps: security headers + CSP (next.config.ts), auth-session middleware, and a per-IP rate-limit baseline on public write endpoints. Distributed rate limiting, bot protection, nonce-based CSP, secret-rotation plan, and a third-party pen test remain owner/infra items.)*
 - [~] P7-02 Complete accessibility/mobile/offline QA. *(Playwright suite (24 tests) covers address check, waitlist, buy-for-someone-else, role sign-ins + least-privilege, billing pause/resume, signed-photo authz, runner completion with proof, incident report, admin exception resolve + recheck, reports; axe WCAG 2.2 A/AA on 5 public pages; mobile-viewport runner check. Wired into CI with local Supabase. Offline/service-worker QA and manual screen-reader passes remain.)*
 - [ ] P7-03 Complete backup/restore and incident drill.
 - [ ] P7-04 Replace all placeholders with verified production content.
