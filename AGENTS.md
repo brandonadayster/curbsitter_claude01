@@ -1,60 +1,88 @@
-# AGENTS.md / CLAUDE.md: AI Behavioral Rules & Systemic Blueprint
+# AGENTS.md - CurbSitter Agent Contract
 
-You are an expert autonomous software engineer specializing in Next.js App Router applications, PostgreSQL schema scaling, and robust mobile hardware API integration. 
+## Mission
 
-## 1. AI Execution & Behavioral Rules
-* **Think Before Coding:** State your assumptions out loud. If a request is ambiguous, ask. Do not just pick one interpretation and run. 
-* **Simplicity First:** Write the minimum code that solves the problem. If a simpler approach exists, push back against complexity. The test: would a senior engineer call this overcomplicated?
-* **Surgical Changes:** Touch only what the task requires. Do not improve neighboring code. Do not refactor what is not broken. Every changed line should trace back to the request.
-* **Goal-Driven Execution:** Turn vague instructions into verifiable targets before writing a line (e.g., "Add validation" becomes "write tests for invalid inputs, then make them pass;" "Fix the bug" becomes "Write a test that reproduces it, then make it pass;" "Refactor X" becomes "Ensure tests pass before and after.")
+Build the smallest reliable system that can sell and operate CurbSitter without making promises the field operation cannot keep.
 
+## Mandatory startup sequence
 
-* **No Speculative Abstractions:** Do not create placeholders, generic folders, or theoretical code. No flexibility nobody asked for. Every line of code must serve an active requirement from `PRD.md` or `APP_FLOW.md`.
+Before changing code:
 
-## 2. Business Context & Market Positioning
-* **Brand Identity:** CurbSitter is the "Uber Black" of residential waste management. A premium, tech-driven "trash-to-curb" concierge service. 
-* **Core Taglines:** "Trash day, handled." | "Never miss trash day again." | "Bins out. Bins back. Done." "Manage trash day anywhere, anytime."
-* **Target Audience:** Prescott, AZ (86301-86318). Specifically targeting seniors, short-term vacation rental owners/property managers, absentee homeowners/snowbirds/frequent travelers, affluent homeowners, HOAs (individual residences & entire community).
-* **Competitive Differentiator:** We do not just move bins; we sell *undeniable proof* and *peace of mind* through automated, timestamped photo verification (Proof-of-Work). 
-* **Strict Scope Lock (The Garbage-Only Boundary):** Do NOT write code, copy, or data structures for residential pet-waste/dog-scooping. If an asset references historical entities like **Scoop2Go** or **BleepSweep**, normalize the name to **CurbSitter** and strip out all residential dog waste mentions.
+1. Read `PROJECT_TRUTH.md`, `DECISION_REGISTER.md`, `BUSINESS_CONFIG.md`, `PRICING_SERVICE_MODEL.md`, `PRD.md`, `APP_FLOW.md`, and `TODO.md`.
+2. Inspect the repository and current tests.
+3. Identify the single ticket being executed.
+4. State assumptions in the ticket or an ADR; never bury them in code.
+5. Create a Git checkpoint.
 
-## 3. Tech Stack & Design System (The "Velvet Rope")
-* **Framework:** Next.js 16/17+ (App Router, React 18+).
-* **Database/Backend:** Supabase (PostgreSQL) - local Dockerized instances for dev.
-* **Payments:** Stripe (Stripe Elements, heavily prioritizing Custom ACH flow).
-* **Mapping:** Mapbox / Leaflet.js for boundary detection and runner routing.
-* **Aesthetic:** High-end, exclusive, tech-startup. Absolutely no generic templates or "junk hauler" aesthetics.
-* **Color Palette:** 
-  * Backgrounds: Slate Gray, Midnight Blue, Deep Onyx.
-  * Accents & CTAs: Electric Cyan or Neon Blue.
-* **Typography:** Crisp, geometric sans-serif (Inter or SF Pro).
-* **Styling Elements:** Use Tailwind CSS. Implement subtle glassmorphism (frosted-glass overlays) on all dashboard cards to create visual depth. Use Framer Motion for smooth, premium fade-ins.
+## Authority and conflicts
 
-## 4. Code Quality & Defensive QA Rules
-* **Proactive Validation:** Every user input component must have robust, live client-side validation using standard Zod schemas or matching TypeScript type guard validation before the user can advance to the next step.
-* **Explicit Error State Mocking:** When generating a form component, you must explicitly code clear, high-contrast inline error messages for missing fields, invalid email types, malformed phone numbers, and out-of-bounds addresses.
-* **Silent Failure Prevention:** Never implement catch blocks that silently swallow errors. All API responses (Stripe, Mapbox, Supabase Auth) must gracefully handle network failures or bad payloads by presenting a clear, luxury-styled fallback state to the user.
-* **Cross-Field Sync Verification:** In multi-step pipelines, you must explicitly write state checks to prevent out-of-order data submission or parameter bypassing via the browser address bar.
+- The authority order in `PROJECT_TRUTH.md` is binding.
+- Old chat exports, screenshots, prototypes, archive files, competitor pages, and generated copy are reference material only.
+- When source material conflicts, do not merge the ideas. Use the higher-authority decision.
+- Do not change pricing, service scope, service areas, policies, or public claims without updating `DECISION_REGISTER.md` and receiving owner approval.
 
-## 5. Hardware API & Security Integrity
-* **Hardware API Contract:** When working in the `/runner-app` path, you will interface directly with the device's physical camera and location hardware. You are strictly mandated to wrap all hardware hooks in bulletproof fallback states:
-  ```javascript
-  try {
-    const coordinates = await getCurrentGPSLocation();
-    // proceed to update data model
-  } catch (error) {
-    console.warn("GPS Permission Denied, falling back to manual confirm");
-    renderUIErrorState("Location access is restricted. Tap here to override.");
-  }
-  
-* **Local Security Constraints:** Next.js restricts non-localhost origin access. If targeting local IP checking, modify next.config.mjs to ensure allowedDevOrigins updates automatically.
+## Hard boundaries
 
-* **Database Writes:** Explicit confirmation is required before generating or executing raw SQL migrations that drop/alter tables.
+Never add or imply:
 
-* **Payments:** All Stripe webhook logic must include signature verification. Do not bypass testing keys in the development environment.
+- Home Watch, Host Shield, or unrelated concierge services in public launch.
+- Residential pet-waste service.
+- Junk hauling, trash transport, or municipal collection.
+- Public proof-photo storage.
+- Fake testimonials, reviews, route counts, waitlist counts, or activity feeds.
+- Exact arrival-time guarantees.
+- Unapproved automatic surcharges.
+- Native mobile apps or custom route optimization during MVP.
+- Legal, inspection, security, or emergency-response claims CurbSitter is not licensed to provide.
 
-## 6. Workflow & Continuity
+## Engineering rules
 
-* **Continuity Rule:** Before ending your reasoning pattern or file modification loop, update the status vectors in TODO.md. Do not let the session drift from the established IMPLEMENTATION_PLAN.md sequence.
+- TypeScript strict mode.
+- Prefer server components; use client components only for real interactivity or browser APIs.
+- Validate all external input at the boundary with a typed schema.
+- Treat Stripe, Twilio, email, maps, and Supabase as unreliable external systems: idempotency, retries, timeouts, and observable failures are required.
+- Use RLS plus server-side authorization. UI hiding is not access control.
+- Store access instructions separately from ordinary property notes and redact them from logs, analytics, error reports, and notifications.
+- Store photos in a private bucket and provide short-lived signed URLs after authorization.
+- Webhook handlers must verify signatures and be idempotent.
+- No secrets in source, client bundles, screenshots, fixtures, or seeded demo content.
+- Never log full addresses with gate codes or travel status.
+- Price and business configuration must come from one typed source, not repeated literals.
 
-* **Git Conventions:** Branching (feature/[name], bugfix/[name]). Semantic commits.
+## Product rules
+
+- Address qualification is route-cell-based.
+- Successful payment does not bypass admin serviceability review.
+- A collection cycle contains two task types: rollout and return.
+- Completion requires the appropriate proof photo unless an authorized exception is recorded.
+- Every failed or delayed task creates a visible exception and customer communication rule.
+- Payer, service recipient, and notification recipients may be different people.
+- SMS is off until explicit consent is recorded.
+
+## UI rules
+
+- Mobile first, especially onboarding and runner views.
+- Minimum 16px body text; primary conversion and runner controls are larger.
+- Strong contrast, obvious focus states, 44px minimum touch targets.
+- Avoid animation that delays comprehension or action.
+- Respect reduced-motion preferences.
+- Do not use decorative glass or glow behind long-form text.
+- Do not add emoji to the production interface unless explicitly approved.
+
+## Testing requirements
+
+For every behavior change, test the happy path and the most expensive failure path. At minimum:
+
+- Unit tests for pricing, route eligibility, state transitions, and permissions.
+- Integration tests for database policies, signed photo access, webhooks, and notifications.
+- Playwright tests for address check, active signup, waitlist, buy-for-someone-else, billing portal, runner completion, and exception resolution.
+- Accessibility checks for public pages and onboarding.
+- Mobile viewport checks for runner and customer flows.
+
+## Completion sequence
+
+1. Run formatting, lint, typecheck, unit tests, integration tests, and relevant e2e tests.
+2. Inspect the diff for leaked secrets, fake content, changed business rules, and accessibility regressions.
+3. Update `TODO.md` and documentation.
+4. Commit with the ticket ID and a plain description.
+5. Summarize what changed, what was tested, and any remaining risk.

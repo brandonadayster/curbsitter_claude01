@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CurbSitter Homepage Pricing Section</title>
+  <link rel="stylesheet" href="assets/pricing.css">
+</head>
+<body>
+  <!-- Drop this section into the CurbSitter homepage. Keep pricing.js loaded once near </body>. -->
+  <section class="cs-section" id="pricing" aria-labelledby="pricing-title" data-pricing-scope>
+    <div class="cs-shell">
+      <header class="cs-section-heading">
+        <span class="cs-eyebrow">Simple plans. Fully handled.</span>
+        <h2 id="pricing-title">Choose how often we handle trash day.</h2>
+        <p>Every visit is documented. Every exception is reported. Your bins go out, come back, and stop becoming your problem.</p>
+      </header>
+
+      <div class="cs-billing-toggle" data-billing-toggle aria-label="Billing frequency">
+        <button type="button" data-billing="monthly" aria-pressed="true">Monthly</button>
+        <button type="button" data-billing="quarterly" aria-pressed="false">Quarterly <small>Save 10%</small></button>
+      </div>
+
+      <div class="cs-plan-grid">
+        <article class="cs-card">
+          <h3 class="cs-plan-name">CurbSitter Home</h3>
+          <p class="cs-plan-summary">One weekly collection day for the typical Prescott household.</p>
+          <div class="cs-price-line">
+            <span class="cs-price" data-monthly="$59" data-quarterly="$159">$59</span>
+            <span class="cs-price-suffix" data-monthly-note="/ month" data-quarterly-note="/ quarter">/ month</span>
+          </div>
+          <p class="cs-price-note">Up to 3 bins at one address.</p>
+          <div class="cs-plan-rule"></div>
+          <ul class="cs-feature-list">
+            <li>One regular collection day each week</li>
+            <li>Evening-before rollout and post-collection return</li>
+            <li>Photo confirmation and exception alerts</li>
+            <li>Trash and recycling on the covered collection day</li>
+          </ul>
+          <a class="cs-button cs-button-secondary cs-button-block" href="/signup?plan=home">Check availability</a>
+        </article>
+
+        <article class="cs-card cs-card-featured">
+          <span class="cs-popular">Most complete</span>
+          <h3 class="cs-plan-name">CurbSitter Complete</h3>
+          <p class="cs-plan-summary">Every regular collection day at one address—without keeping track of any of them.</p>
+          <div class="cs-price-line">
+            <span class="cs-price" data-monthly="$89" data-quarterly="$240">$89</span>
+            <span class="cs-price-suffix" data-monthly-note="/ month" data-quarterly-note="/ quarter">/ month</span>
+          </div>
+          <p class="cs-price-note">Up to 6 bins at one address.</p>
+          <div class="cs-plan-rule"></div>
+          <ul class="cs-feature-list">
+            <li>Every regular trash and recycling collection day</li>
+            <li>Evening-before rollout and post-collection return</li>
+            <li>Photo confirmation and exception alerts</li>
+            <li>Ideal for separate pickup days, second homes and rentals</li>
+          </ul>
+          <a class="cs-button cs-button-primary cs-button-block" href="/signup?plan=complete">Check availability</a>
+        </article>
+      </div>
+
+      <aside class="cs-community-card">
+        <div>
+          <h3>Community &amp; Portfolio</h3>
+          <p>Custom route pricing, centralized reporting and account management for HOAs, property managers and multiple properties.</p>
+        </div>
+        <a class="cs-button cs-button-secondary" href="/contact?interest=community">Request a proposal</a>
+      </aside>
+
+      <div class="cs-included">
+        <h3>Every subscription includes</h3>
+        <div class="cs-included-grid">
+          <span>Photo confirmation every visit</span>
+          <span>Real-time exception reporting</span>
+          <span>Holiday schedule monitoring</span>
+          <span>Normal HOA timing instructions</span>
+          <span>Minor javelina and wind reset</span>
+          <span>Customer dashboard and service history</span>
+          <span>No long-term contract</span>
+          <span>Pause or cancel future renewal</span>
+        </div>
+      </div>
+
+      <p class="cs-note">Quarterly pricing is prepaid by ACH. Specialty access or unusual service conditions may require review. <a href="/pricing">See full pricing and service guidelines.</a></p>
+    </div>
+  </section>
+  <script src="assets/pricing.js"></script>
+</body>
+</html>

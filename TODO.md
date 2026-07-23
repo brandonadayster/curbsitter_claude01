@@ -1,32 +1,74 @@
-# TODO: Living AI Execution Tracker
+# Living Execution Tracker
 
-**Agent Instructions:** Read this file at the start of every session. Check off items `[x]` as they are completed. Do not skip phases or drift from this established sequence.
+Status annotations added 2026-07-19 after the v1.1 kit was adopted into this
+repository (branch `feature/kit-v1.1-baseline`). Unchecked items with notes are
+partially complete; the note says what remains.
 
-## Phase 1: Foundation, Database & Core Infrastructure
-- [x] 1.1: Initialize Next.js App Router, Tailwind config, and implement brand color variables.
-- [x] 1.2: Build Landing Page Hero and luxury GlassCard components.
-- [x] 1.3: Run structural database table modifications in Supabase SQL editor using `BACKEND_STRUCTURE.md`.
-- [x] 1.4: Manually configure object containment and security parameters for the public media bucket `proof_of_work_photos`.
+## Phase 0
+- [x] P0-01 Confirm publication locks. *(Locked 2026-07-13 pricing adopted into `src/config/business.ts` + seed; OWNER_CONFIRM items tracked in OPEN_DECISIONS.md.)*
+- [x] P0-02 Initialize repository and protections. *(Repo + feature-branch convention; GitHub branch-protection rules must be enabled in repo settings by the owner.)*
+- [x] P0-03 Scaffold current stable app and pin versions. *(Existing Next 16.2.10 / React 19 app retained; `.nvmrc` 24; npm lockfile committed — see docs/adr/0001.)*
+- [x] P0-04 Add CI and quality scripts. *(lint/typecheck/test/build in GitHub Actions; RLS smoke test runs locally via `scripts/test_rls.sh`.)*
+- [ ] P0-05 Configure local/staging/production environments. *(Local complete incl. local Supabase; staging/production provisioning is owner-gated.)*
 
-## Phase 2: Onboarding, Conversions & Payments
-- [x] 2.1: Build Zip Code Validator logic (86301, 86303, 86305) and gamified progress waitlist layout for invalid zips.
-- [x] 2.2: Build 4-step onboarding form UI state machine to capture property details (gate/garage codes, hidden keys, pet warnings, custom instructions).
-- [x] 2.3: Upgrade pricing display layers with automated slider adjustments processing Quarterly ACH check processing incentives ($10 ACH, $5 AutoPay).
-- [x] 2.4: Connect Supabase Auth, DB ingestion, and integrate Stripe Elements for secure checkout.
-- [x] 2.5: Integrate out-of-view tracking handlers to pop open local contact lines if form abandonment intent registers.
-- [x] 2.6: Drop the milestone referral program panel into onboarding validation frames for individual user performance tracking.
-- [x] 2.7: Build a secure Stripe Webhook handler to process customer referrals ($20.00 customer balance credit and database logging).
+## Phase 1
+- [x] P1-01 Create core migrations and enums. *(Migration history reset pre-production; legacy prototype schema archived in docs/archive/legacy-migrations.)*
+- [x] P1-02 Implement auth roles/memberships. *(profiles + platform_role, accounts, account_members, auto-profile trigger.)*
+- [x] P1-03 Implement RLS and policy tests. *(Default-deny + explicit verb grants; `scripts/test_rls.sh` proves no cross-account/runner leakage. Expand into fuller policy suite during Phase 4.)*
+- [x] P1-04 Create private storage and signed URL service. *(Authorized short-lived signed URLs via /api/photos/[id]/url; uploads server-mediated to the private bucket.)*
+- [x] P1-05 Isolate/encrypt access data and audit privileged actions. *(AES-256-GCM at rest, task-scoped audited reveal for assigned runners; customer step-up re-verification remains a Phase 5 item.)*
 
-## Phase 3: Field Runner Hardware & Terminal Upgrades
-- [x] 3.1: Scaffold `/runner-app` mobile UI and mount tracking elements for shift actions, timing breaks, and odometer logging metrics.
-- [x] 3.2: Implement HTML5 camera & Geolocation with fail-safe error handling. Program coordinate acquisition safeguards to store base property markers (`bin_coordinates`) on the first-time service stop.
-- [x] 3.3: Build `submitServiceStop` Server Action: Re-engineer image ingestion pipelines to route dense multi-photo arrays (up to 50 asset streams) to Supabase storage vaults.
-- [x] 3.4: Integrate the action overlay drawer inside field modules to trigger rapid surcharge invoicing loops for overflow collections or wild animal driveway cleanup tasks.
-- [x] 3.5: Wire Twilio SMS trigger upon successful upload/service completion.
+## Phase 2
+- [x] P2-01 Build design tokens/public shell. *(FRONTEND_GUIDELINES tokens in globals.css, header/footer, reduced-motion, focus states.)*
+- [x] P2-02 Build core marketing pages and content. *(All APP_FLOW public routes with truthful copy; legal pages are marked drafts pending counsel.)*
+- [x] P2-03 Build address normalization and route-cell engine. *(Geocode + point-in-cell for active results; zip buckets only for non-active outcomes; every check recorded.)*
+- [x] P2-04 Build waitlist and consent flow. *(Versioned consent rows, share codes, referral attribution, outbox-queued confirmation.)*
+- [x] P2-05 Build route-cell admin. *(State/capacity management with waiting-lead counts and audit entries; public site reflects changes.)*
+- [ ] P2-06 Add SEO, structured data, analytics events, and accessibility checks. *(Metadata/sitemap/robots done; structured data, analytics events, and automated axe checks remain.)*
 
-## Phase 4: Portal Management Layers & Dashboards
-- [x] 4.1: Build Admin Dashboard: Implement real-time photo feed and localized lookup tables tracking exception resolution states and territory density trends.
-- [x] 4.2: Build Customer Dashboard: Implement proof-of-work history (with 120-day auto-delete script to reduce storage overhead) and invoice/payment history views.
-- [x] 4.3: Build Customer Dashboard: Drop the dynamic red-border warning flag component straight into the primary client interface framework for active exceptions.
-- [x] 4.4: Build Customer Dashboard: Implement the seasonal trip scheduling toggle to register instant route pause/start/cancel parameters. Add strict disclaimer that customers must update their account 24 hours prior to their next scheduled renewal payment to avoid charges.
-- [x] 4.5: Build Customer Dashboard: Create forms for users to actively update property details, gate access codes, and special runner instructions.
+## Phase 3
+- [x] P3-01 Build four-stage onboarding. *(Draft persistence with capability token, resume, progress UI.)*
+- [x] P3-02 Build contacts/payer/recipient/property/bin/schedule intake. *(Buy-for-someone-else supported; extra notification recipients UI minimal.)*
+- [x] P3-03 Build secure access/hazard intake. *(Secrets split from stage data at the boundary, encrypted at rest, never echoed to the client.)*
+- [x] P3-04 Build server-side pricing/config. *(`buildQuote` from typed config; complexity flags review, never a surcharge; unit-tested.)*
+- [x] P3-05 Integrate Stripe and idempotent webhooks. *(Checkout for monthly card / quarterly prepaid ACH / one-time; webhook_events ledger; needs test keys in .env.local to exercise end-to-end.)*
+- [x] P3-06 Create serviceability review state and communications. *(Admin review queue approves/declines with audited decisions and outbox-queued customer emails; the outbox sender worker itself is P5-05.)*
+
+## Phase 4
+- [x] P4-01 Build cycle/task generation. *(Per-date generation from verified schedules of active properties; idempotent; Phoenix service windows.)*
+- [x] P4-02 Build admin review and route builder. *(Manual route build per D-011: date+type → published route, address-ordered, runner-assigned.)*
+- [x] P4-03 Build runner route/task UI. *(Assigned-only stops, large controls, audited access reveal, full rollout cycle driven end-to-end 2026-07-20.)*
+- [x] P4-04 Build photo capture/compression/private upload/retry. *(Camera capture → private bucket via server; server-enforced proof-before-complete; client-side compression and offline retry queue remain for pilot hardening.)*
+- [x] P4-05 Build explicit state machine and event log. *(Transition table + cycle sync unit-tested; append-only task_events; idempotent completion keys.)*
+- [x] P4-06 Build exception, recheck, and safety incident workflows. *(Admin triage page with resolve/retry/schedule-recheck, customer exception/hauler-delay emails via outbox, runner safety-incident reports; delayed-hauler loop verified end-to-end 2026-07-20.)*
+
+## Phase 5
+- [x] P5-01 Build customer overview and multi-property views. *(Portal shell + nav; overview with next service and per-property cards, all RLS-scoped.)*
+- [x] P5-02 Build instruction/access update with step-up verification. *(Instruction editing + write-only encrypted access-secret replace with manager check; a customer-facing step-up *reveal* is deferred — access is intentionally write-only from the portal.)*
+- [x] P5-03 Build history, exceptions, and signed-photo views. *(Service history with cycles, customer-visible exceptions + resolutions, and RLS-authorized short-lived signed proof photos; verified own=200 / foreign=404.)*
+- [x] P5-04 Build pause/resume/cancel and Stripe portal. *(Pause/resume/cancel-at-renewal, audited; gates cycle generation — integration-tested; Stripe Customer Portal when configured, honest fallback otherwise.)*
+- [x] P5-05 Build email/SMS outbox, retries, consent, and preferences. *(Sender worker with template rendering, Resend/dev provider, exponential backoff + claim; cron route guarded by CRON_SECRET; admin process-now; consent-append preferences. Twilio SMS delivery still off pending provider wiring.)*
+- [x] P5-06 Build support tickets. *(Customer create/list via RLS; admin queue with audited status updates.)*
+
+## Phase 6
+- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested.)*
+- [x] P6-02 Build One-Time Trash Day order flow with active-route/capacity validation. *(Checkout blocks one-time unless the address resolved to an active cell with capacity; verified 409 on a waitlist route.)*
+- [x] P6-03 Build Bulk Pickup Coordination request, authorization, status, and provider-note flow. *(Authenticated customer request -> order; admin eligibility/status/provider-note flow. Public non-customers still routed via contact.)*
+- [x] P6-04 Build separately quoted physical-placement review flow behind admin approval; keep Home Watch/Host Shield disabled. *(Placement is a distinct admin-quoted order_item, never implied/auto-charged; FEATURES flags keep Home Watch/Host Shield off.)*
+- [x] P6-05 Build route/cell KPI dashboard. *(Reliability (proof rate, exceptions), route-economics (active properties, monthly-equivalent MRR by cell), exceptions-by-category — internal inputs, not public metrics.)*
+- [x] P6-06 Build HOA/portfolio basics. *(Admin accounts view grouping HOA/portfolio vs individual with property counts, active subs, and completed-cycle totals.)*
+
+## Phase 7
+- [ ] P7-01 Complete security/privacy review.
+- [~] P7-02 Complete accessibility/mobile/offline QA. *(Playwright suite (24 tests) covers address check, waitlist, buy-for-someone-else, role sign-ins + least-privilege, billing pause/resume, signed-photo authz, runner completion with proof, incident report, admin exception resolve + recheck, reports; axe WCAG 2.2 A/AA on 5 public pages; mobile-viewport runner check. Wired into CI with local Supabase. Offline/service-worker QA and manual screen-reader passes remain.)*
+- [ ] P7-03 Complete backup/restore and incident drill.
+- [ ] P7-04 Replace all placeholders with verified production content.
+- [ ] P7-05 Verify legal/insurance/policy/SMS requirements.
+- [ ] P7-06 Run shadow routes and staff training.
+- [ ] P7-07 Soft launch and monitor pilot metrics.
+
+## Current ticket
+
+Set exactly one current ticket here before an agent begins:
+
+`CURRENT: P7-01`

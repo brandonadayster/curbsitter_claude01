@@ -1,12 +1,14 @@
+import "server-only";
+
 import Stripe from "stripe";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "sk_test_placeholder";
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn("Warning: STRIPE_SECRET_KEY is not defined in environment variables. Using placeholder.");
+/**
+ * Stripe client for test/dev keys. Returns null when billing is not configured
+ * so callers can present an honest "billing unavailable" state instead of
+ * crashing (Silent Failure Prevention).
+ */
+export function getStripe(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) return null;
+  return new Stripe(secretKey);
 }
-
-export const stripe = new Stripe(stripeSecretKey, {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiVersion: "2025-01-27.acac" as any, // Locked-in stable API version
-});
