@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, zodFieldErrors } from "@/lib/api";
+import { apiError, rateLimitedError, zodFieldErrors } from "@/lib/api";
+import { limitPublic } from "@/lib/rate-limit";
 import { stage1Schema } from "@/lib/onboarding-schemas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -11,6 +12,9 @@ const createDraftSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limit = limitPublic(request, "onboarding-draft", { limit: 15, windowSeconds: 60 });
+  if (!limit.ok) return rateLimitedError(limit.retryAfterSeconds);
+
   let payload: unknown;
   try {
     payload = await request.json();

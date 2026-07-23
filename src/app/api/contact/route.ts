@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, zodFieldErrors } from "@/lib/api";
+import { apiError, rateLimitedError, zodFieldErrors } from "@/lib/api";
+import { limitPublic } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const contactSchema = z.object({
@@ -12,6 +13,9 @@ const contactSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limit = limitPublic(request, "contact", { limit: 5, windowSeconds: 60 });
+  if (!limit.ok) return rateLimitedError(limit.retryAfterSeconds);
+
   let payload: unknown;
   try {
     payload = await request.json();

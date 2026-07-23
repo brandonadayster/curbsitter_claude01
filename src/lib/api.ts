@@ -28,6 +28,20 @@ export function apiError(
   return NextResponse.json({ error: body }, { status });
 }
 
+/** 429 with a Retry-After header for rate-limited public endpoints. */
+export function rateLimitedError(retryAfterSeconds: number) {
+  const body: ApiError = {
+    code: "rate_limited",
+    message: "Too many requests. Please wait a moment and try again.",
+    correlationId: crypto.randomUUID(),
+    retryable: true,
+  };
+  return NextResponse.json(
+    { error: body },
+    { status: 429, headers: { "Retry-After": String(Math.max(1, retryAfterSeconds)) } },
+  );
+}
+
 export function zodFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>) {
   const fieldErrors: Record<string, string> = {};
   for (const issue of issues) {

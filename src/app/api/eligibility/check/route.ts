@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { apiError, zodFieldErrors } from "@/lib/api";
+import { apiError, rateLimitedError, zodFieldErrors } from "@/lib/api";
 import { addressCheckSchema, checkAddressEligibility } from "@/lib/eligibility";
+import { limitPublic } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Geocoding costs money and each check writes a row — limit per IP.
+  const limit = limitPublic(request, "eligibility", { limit: 20, windowSeconds: 60 });
+  if (!limit.ok) return rateLimitedError(limit.retryAfterSeconds);
+
   let payload: unknown;
   try {
     payload = await request.json();
