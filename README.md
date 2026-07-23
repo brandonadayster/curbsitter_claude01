@@ -28,7 +28,7 @@ Build one production-grade web application with route groups for:
 
 - Current stable Next.js App Router, React, TypeScript, and Tailwind CSS.
 - Node current active LTS; pin the exact version in `.nvmrc` after initialization.
-- pnpm with a committed lockfile.
+- npm with a committed `package-lock.json` and working `node_modules`.
 - Supabase Postgres/Auth/Storage with RLS.
 - Stripe Billing, Checkout/Payment Element as appropriate, and Stripe Customer Portal.
 - Transactional email provider; Twilio only for consented SMS.
@@ -43,13 +43,13 @@ Use current stable releases at bootstrap, then lock exact versions. Do not inven
 Expected commands once the application is initialized:
 
 ```bash
-pnpm install
-pnpm dev
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:e2e
-pnpm build
+npm install
+npm run dev
+npm run lint
+npm run typecheck
+npm test
+npm run test:e2e
+npm run build
 ```
 
 ## Working method

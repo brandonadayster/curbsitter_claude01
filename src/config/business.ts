@@ -26,14 +26,15 @@ export interface PlanConfig {
 
 export const BUSINESS = {
   name: "CurbSitter",
-  legalName: null as string | null, // OWNER_CONFIRM
+  legalName: "CurbSitter, LLC", // confirmed 2026-07-23
   market: "Prescott, Arizona",
   timezone: "America/Phoenix",
   primaryTagline: "Trash day, handled.",
   serviceLine: "Bins out. Bins back. Photo-confirmed.",
-  phone: null as string | null, // OWNER_CONFIRM
-  email: null as string | null, // OWNER_CONFIRM
-  domain: null as string | null, // OWNER_CONFIRM
+  phone: "(520) 225-9713", // confirmed 2026-07-23
+  // Mailbox not yet provisioned; email sending is blocked until DNS/provider setup.
+  email: "support@curbsitter.com", // confirmed 2026-07-23
+  domain: "curbsitter.com", // confirmed 2026-07-23; canonical site https://www.curbsitter.com
 } as const;
 
 export const PLANS: Record<PlanId, PlanConfig> = {
@@ -89,7 +90,9 @@ export const REFERRALS = {
   advocateCreditCents: 2000,
   referredCustomerCreditCents: 2000,
   qualifyingEvent: "first_paid_collection_cycle_completed",
-  monthlyCreditCapCents: null as number | null, // OWNER_CONFIRM
+  // confirmed 2026-07-23: no monthly cap. `null` = uncapped; the admin approval
+  // path only enforces a ceiling when this is non-null.
+  monthlyCreditCapCents: null as number | null,
 } as const;
 
 export const NOTIFICATIONS = {

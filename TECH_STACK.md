@@ -15,7 +15,7 @@ Use current stable releases at bootstrap, commit the lockfile, and record exact 
 ## Runtime and package management
 
 - Node current active LTS.
-- pnpm and committed `pnpm-lock.yaml`.
+- npm and committed `package-lock.json` and working `node_modules`.
 - `.nvmrc` and `packageManager` field pinned after initialization.
 
 ## Data and identity

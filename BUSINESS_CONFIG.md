@@ -5,14 +5,14 @@ This file is the human-readable mirror of values that must eventually live in ty
 ```yaml
 business:
   name: CurbSitter
-  legal_name: "OWNER_CONFIRM"
+  legal_name: "CurbSitter, LLC"
   market: "Prescott, Arizona"
   timezone: "America/Phoenix"
   primary_tagline: "Trash day, handled."
   service_line: "Bins out. Bins back. Photo-confirmed."
-  phone: "OWNER_CONFIRM"
-  email: "OWNER_CONFIRM"
-  domain: "OWNER_CONFIRM"
+  phone: "(520) 225-9713"
+  email: "support@curbsitter.com"
+  domain: "curbsitter.com"
 
 plans:
   home:
@@ -72,7 +72,7 @@ referrals:
   advocate_credit_cents: 2000
   referred_customer_credit_cents: 2000
   qualifying_event: "first_paid_collection_cycle_completed"
-  monthly_credit_cap_cents: "OWNER_CONFIRM"
+  monthly_credit_cap_cents: "no cap"
 
 notifications:
   email_default: true

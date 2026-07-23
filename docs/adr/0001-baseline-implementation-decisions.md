@@ -1,7 +1,7 @@
 # ADR 0001 — Baseline implementation decisions (v1.1 kit adoption)
 
 **Date:** 2026-07-19
-**Status:** Draft — awaiting owner approval (agent may draft, not approve)
+**Status:** Accepted — owner approved 2026-07-23
 
 ## Context
 

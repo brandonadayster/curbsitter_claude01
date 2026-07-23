@@ -15,13 +15,15 @@
 | D-011 | Manual/assisted routing first; custom optimization later. | Locked | Do not build a math project before validating route economics. | Triggered by scale thresholds. |
 | D-012 | Stripe Billing and Customer Portal handle recurring payments; quarterly plans are prepaid by ACH and renew every three months. | Locked | Reduces custom billing risk while preserving the approved quarterly offer. | Architecture ADR. |
 | D-013 | Email is default; SMS is opt-in and transactional unless separate marketing consent exists. | Locked | Compliance and customer trust. | Legal review. |
-| D-014 | Referrals are Give $20/Get $20 after a qualifying completed paid service, with anti-fraud controls. | Confirm before publish | High growth potential without paying for empty leads. | Owner confirms caps/expiration. |
+| D-014 | Referrals are Give $20/Get $20 after a qualifying completed paid service, with anti-fraud controls. | Locked | High growth potential without paying for empty leads. | Owner confirms caps/expiration. |
 | D-015 | Do not publish fake reviews, route counts, availability, social proof, or AI-created customer quotes. | Locked | Trust is the moat. | Never override. |
 | D-016 | Deep onyx design remains, but legibility and restraint outrank glow effects. | Locked | Target audience includes older adults. | Design review. |
 | D-017 | Pricing and operational rules are configuration-driven, not hardcoded in pages. | Locked | Prevents contradictory versions. | Never override. |
 | D-018 | Admin approves the property before first service, even after successful payment. | Locked | Avoids operational surprises and unsafe access. | Operations review. |
 | D-019 | Minor javelina/wind reset discovered during a scheduled visit is included; widespread debris, hazards, or separate dispatches require review or quote. | Locked | Adds practical value without creating open-ended cleanup work. | Operations/legal review. |
 | D-020 | The public menu leads with Home and Complete; one-time and bulk coordination remain secondary, while Community & Portfolio is custom proposal. | Locked | Prevents option overload and keeps the core offer obvious. | Conversion data + owner ADR. |
+| D-021 | Legal identity is CurbSitter, LLC; public contact is (520) 225-9713, support@curbsitter.com, curbsitter.com (canonical https://www.curbsitter.com). | Locked (owner-confirmed 2026-07-23) | Resolves OPEN_DECISIONS #1. Email mailbox and domain hosting are not yet provisioned. | Owner ADR. |
+| D-022 | Referral credits have no monthly cap. | Locked (owner-confirmed 2026-07-23) | Resolves the cap portion of OPEN_DECISIONS #6; expiration, tax treatment, and full fraud policy remain open. | Owner ADR. |
 
 ## Retired decisions
 
