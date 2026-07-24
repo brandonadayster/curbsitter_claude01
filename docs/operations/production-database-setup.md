@@ -98,3 +98,48 @@ Slower and error-prone; prefer A or B.
 
 If something goes wrong mid-apply, restore from the pre-reset backup and
 re-attempt after fixing the issue.
+
+---
+
+## Reset completed 2026-07-24 (record)
+
+The hosted project `uvnrgimteckqcvpcdcae` was reset and rebuilt via the MCP path:
+old prototype schema (waitlist/users/county_subdivisions/PostGIS) dropped; 5
+migrations applied; `production.sql` seeded (2 plans, 4 services, 3 research
+route cells, 10 templates). Verified: 37 tables, **RLS on every public table**,
+**zero public buckets**, **zero storage.objects policies**, no active route
+cells, migration history aligned to local filenames.
+
+Security cleanup performed during the reset:
+- Removed the old **public** `proof_of_work_photos` bucket's public flag and its
+  five permissive "anonymous/public read+upload" policies (they would have
+  exposed the new private buckets).
+- Added `20260724120000_harden_function_grants` to fix the advisor's real
+  finding: `get_user_id_by_email` was callable by `anon` via `/rest/v1/rpc`
+  (email enumeration) — now `PUBLIC` execute revoked, `service_role` retained.
+
+### Remaining advisor items (accepted / owner)
+
+- **INFO — RLS enabled, no policy** on `audit_log`, `eligibility_checks`,
+  `notification_outbox`, `notification_templates`, `onboarding_drafts`,
+  `property_access_secrets`, `waitlist_leads`, `webhook_events`: **by design** —
+  these are server-only tables (default-deny; only the service role reaches
+  them). No client policy is intended.
+- **WARN — SECURITY DEFINER helpers callable by authenticated** (`is_account_member`,
+  `is_account_manager`, `can_view_property`, `is_assigned_runner_for_task`,
+  `is_staff`, `current_platform_role`): **accepted** — RLS policies must be able
+  to execute them, and they only ever reveal the *caller's own* membership/role
+  (`auth.uid()`), so REST exposure leaks nothing. Future hardening: move them to
+  a private (non-API) schema.
+- **WARN — Leaked Password Protection disabled** (Auth): **owner toggle** —
+  enable in Dashboard → Authentication → Providers/Policies (HaveIBeenPwned
+  check). Recommended for production; low urgency since sign-in is magic-link by
+  default.
+
+### Still to do (owner)
+
+- Delete the orphaned old `proof_of_work_photos` bucket (14 test objects) from
+  Dashboard → Storage (SQL can't delete storage objects).
+- Wire the hosted keys into the **deploy platform** (see "After applying" above),
+  not local `.env.local`.
+- Create real staff accounts via Auth and set `profiles.platform_role`.
