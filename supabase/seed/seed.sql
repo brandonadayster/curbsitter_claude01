@@ -1,3 +1,11 @@
+-- ============================================================================
+-- LOCAL / CI DEVELOPMENT SEED ONLY.  DO NOT APPLY TO A HOSTED PROJECT.
+-- This file creates dev sign-in users with a KNOWN PASSWORD (see bottom).
+-- Applying it to production would create a known-password admin backdoor.
+-- For a hosted project use supabase/seed/production.sql instead, and never run
+-- `supabase db reset --linked` (which would run this file against the remote).
+-- ============================================================================
+--
 -- Synthetic development seed. No customer data, no fabricated public claims.
 -- Plan/service prices mirror src/config/business.ts (locked 2026-07-13 pricing).
 

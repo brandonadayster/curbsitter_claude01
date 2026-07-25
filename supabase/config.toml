@@ -14,7 +14,10 @@ major_version = 17
 
 [db.seed]
 enabled = true
-sql_paths = ["./seed/*.sql"]
+# Local/CI reset uses the dev seed only. production.sql is applied manually to
+# hosted projects and must NOT be globbed here (it would double-run locally, and
+# more importantly this keeps the two seeds clearly separate).
+sql_paths = ["./seed/seed.sql"]
 
 [studio]
 enabled = true
