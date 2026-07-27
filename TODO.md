@@ -51,7 +51,7 @@ partially complete; the note says what remains.
 - [x] P5-06 Build support tickets. *(Customer create/list via RLS; admin queue with audited status updates.)*
 
 ## Phase 6
-- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested.)*
+- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested. Credit amount lowered to Give $10/Get $10 2026-07-27 — see PP-02.)*
 - [x] P6-02 Build One-Time Trash Day order flow with active-route/capacity validation. *(Checkout blocks one-time unless the address resolved to an active cell with capacity; verified 409 on a waitlist route.)*
 - [x] P6-03 Build Bulk Pickup Coordination request, authorization, status, and provider-note flow. *(Authenticated customer request -> order; admin eligibility/status/provider-note flow. Public non-customers still routed via contact.)*
 - [x] P6-04 Build separately quoted physical-placement review flow behind admin approval; keep Home Watch/Host Shield disabled. *(Placement is a distinct admin-quoted order_item, never implied/auto-charged; FEATURES flags keep Home Watch/Host Shield off.)*
@@ -74,8 +74,14 @@ standards (#8), customer-service SLA (#9), HOA pilot pricing/reporting (#11),
 pause/cancel cutoff (#12), and the optional founder offer (#2). See
 docs/operations/README.md and docs/legal/README.md.
 
+## Post-launch changes
+
+- [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
+  `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
+  copy, admin referrals page) to read from config instead, and updated tests/docs.
+
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P7-01`
+`CURRENT: PP-02`

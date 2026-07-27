@@ -87,8 +87,8 @@ export const SERVICE_WINDOWS = {
 } as const;
 
 export const REFERRALS = {
-  advocateCreditCents: 2000,
-  referredCustomerCreditCents: 2000,
+  advocateCreditCents: 1000,
+  referredCustomerCreditCents: 1000,
   qualifyingEvent: "first_paid_collection_cycle_completed",
   // confirmed 2026-07-23: no monthly cap. `null` = uncapped; the admin approval
   // path only enforces a ceiling when this is non-null.

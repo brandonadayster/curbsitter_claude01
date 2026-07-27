@@ -75,7 +75,7 @@ describe.skipIf(!localStackAvailable)("maybeQualifyReferralForAccount", () => {
     expect(credits).toHaveLength(2);
     // Never auto-earned — must be pending until admin approval.
     expect(credits!.every((c) => c.status === "pending")).toBe(true);
-    expect(credits!.every((c) => c.amount_cents === 2000)).toBe(true);
+    expect(credits!.every((c) => c.amount_cents === 1000)).toBe(true);
 
     const { data: referral } = await supabase
       .from("referrals")

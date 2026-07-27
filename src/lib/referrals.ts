@@ -4,7 +4,7 @@ import { REFERRALS } from "@/config/business";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Referral lifecycle (D-014: Give $20 / Get $20 after a qualifying completed
+ * Referral lifecycle (D-014: Give $10 / Get $10 after a qualifying completed
  * paid cycle, with anti-fraud controls).
  *
  * Because the credit cap, expiration, and fraud policy are still owner-open
