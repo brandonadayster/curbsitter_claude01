@@ -73,3 +73,29 @@ test("admin reports page renders reliability and route-economics inputs", async 
   await expect(page.getByText(/proof rate/i)).toBeVisible();
   await expect(page.getByText(/route economics/i)).toBeVisible();
 });
+
+test("admin sets a route cell's map center point and it persists", async ({ page }) => {
+  const db = adminClient();
+  await page.goto("/admin/route-cells");
+  await expect(page.getByRole("heading", { name: /^Route cells$/ })).toBeVisible();
+
+  const { data: cell } = await db.from("route_cells").select("id").eq("slug", "prescott-lakes").single();
+
+  await page.locator(`#center-lat-${cell!.id}`).fill("34.5511");
+  await page.locator(`#center-lng-${cell!.id}`).fill("-112.469");
+  await page.locator(`#center-lat-${cell!.id}`).locator("xpath=ancestor::form").getByRole("button", { name: /save/i }).click();
+
+  await expect
+    .poll(async () => {
+      const { data } = await db
+        .from("route_cells")
+        .select("center_latitude, center_longitude")
+        .eq("id", cell!.id)
+        .single();
+      return data;
+    })
+    .toMatchObject({ center_latitude: 34.5511, center_longitude: -112.469 });
+
+  // Clean up so this test is idempotent against a re-run.
+  await db.from("route_cells").update({ center_latitude: null, center_longitude: null }).eq("id", cell!.id);
+});

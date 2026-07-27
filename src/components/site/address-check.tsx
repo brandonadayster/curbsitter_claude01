@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { formatCents, REFERRALS } from "@/config/business";
+
 interface EligibilityOutcome {
   checkId: string;
   result:
@@ -254,8 +256,8 @@ export function WaitlistJoinForm({
         </p>
         <p className="mt-3 break-all rounded-lg bg-surface-2 px-4 py-3 font-mono text-base">{shareUrl}</p>
         <p className="mt-3 text-base text-muted">
-          Referrals earn a $20 credit for you and your neighbor after their first paid service
-          cycle is completed.
+          Referrals earn a {formatCents(REFERRALS.advocateCreditCents)} credit for you and your
+          neighbor after their first paid service cycle is completed.
         </p>
       </div>
     );

@@ -51,7 +51,7 @@ partially complete; the note says what remains.
 - [x] P5-06 Build support tickets. *(Customer create/list via RLS; admin queue with audited status updates.)*
 
 ## Phase 6
-- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested.)*
+- [x] P6-01 Build referral codes, attribution, credits, and fraud review. *(Qualifying event = first completed paid cycle -> pending Give $20/Get $20 credits (never auto-spendable); self-referral / shared-payment / shared-address / shared-email fraud flags; admin approve (pending->earned, cap-aware) or reject; customer referral page with share link + balances. Accrual/fraud/idempotency integration-tested. Credit amount lowered to Give $10/Get $10 2026-07-27 — see PP-02.)*
 - [x] P6-02 Build One-Time Trash Day order flow with active-route/capacity validation. *(Checkout blocks one-time unless the address resolved to an active cell with capacity; verified 409 on a waitlist route.)*
 - [x] P6-03 Build Bulk Pickup Coordination request, authorization, status, and provider-note flow. *(Authenticated customer request -> order; admin eligibility/status/provider-note flow. Public non-customers still routed via contact.)*
 - [x] P6-04 Build separately quoted physical-placement review flow behind admin approval; keep Home Watch/Host Shield disabled. *(Placement is a distinct admin-quoted order_item, never implied/auto-charged; FEATURES flags keep Home Watch/Host Shield off.)*
@@ -83,9 +83,19 @@ docs/operations/README.md and docs/legal/README.md.
   "CurbSitter Enterprise" (display-only; internal ids unchanged). **Removed Bulk Pickup Coordination
   entirely** — routes, config, feature flags, nav, and admin tooling deleted (D-007 retired); this
   supersedes P6-03/P6-04. No cycle-engine or plan-id changes.
+- [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
+  `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
+  copy, admin referrals page) to read from config instead, and updated tests/docs.
+- [x] PP-03 Interactive map foundation slice (2026-07-27). Built the "Route-cell status map and
+  legend" documented in `FRONTEND_GUIDELINES.md` but never implemented (public `/service-areas`,
+  colored/labeled by state only, no counts), plus a customer-dashboard property-pin map on `/app`.
+  New shared `MapBase`/`RouteCellMap`/`PropertyPinMap` components, a `route_cells` center-point
+  migration + admin edit UI, and an RLS-scoped `createSupabaseAnonClient` for ISR-safe public reads.
+  Admin multi-layer map, runner density map, and the waitlist-unlock gamification mechanic are
+  explicitly deferred to separate future tickets.
 
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-01`
+`CURRENT: PP-03`

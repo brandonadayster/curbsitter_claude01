@@ -3,7 +3,9 @@ import Link from "next/link";
 
 import { AddressCheck } from "@/components/site/address-check";
 import { CtaBand, PageHero, Section } from "@/components/site/sections";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { RouteCellMap, type RouteCellMapCell } from "@/components/map/route-cell-map";
+import { STATE_LABELS } from "@/lib/route-cell-labels";
+import { createSupabaseAnonClient } from "@/lib/supabase/public";
 
 export const metadata: Metadata = {
   title: "Service Areas",
@@ -13,25 +15,25 @@ export const metadata: Metadata = {
 
 export const revalidate = 300;
 
-const STATE_LABELS: Record<string, string> = {
-  research: "Researching",
-  waitlist: "Waitlist open",
-  opening: "Opening soon",
-  active: "Active",
-  capacity_full: "At capacity",
-  premium_review: "By review",
-  closed: "Closed",
-};
-
-async function getRouteCells() {
+async function getRouteCells(): Promise<RouteCellMapCell[]> {
   try {
-    const supabase = createSupabaseAdminClient();
+    // RLS already grants public select on route_cells; the anon client keeps
+    // this ISR-cacheable (unlike the cookie-bound server client).
+    const supabase = createSupabaseAnonClient();
     const { data } = await supabase
       .from("route_cells")
-      .select("name, slug, state")
+      .select("id, name, slug, state, geometry, center_latitude, center_longitude")
       .neq("state", "closed")
       .order("name");
-    return data ?? [];
+    return (data ?? []).map((cell) => ({
+      id: cell.id,
+      name: cell.name,
+      slug: cell.slug,
+      state: cell.state as RouteCellMapCell["state"],
+      geometry: cell.geometry as RouteCellMapCell["geometry"],
+      centerLatitude: cell.center_latitude,
+      centerLongitude: cell.center_longitude,
+    }));
   } catch {
     return [];
   }
@@ -62,6 +64,7 @@ export default async function ServiceAreasPage() {
           </p>
         ) : (
           <>
+            <RouteCellMap cells={cells} className="mb-6 h-80 w-full overflow-hidden rounded-2xl" />
             <ul className="divide-y divide-border rounded-2xl border border-border bg-surface">
               {cells.map((cell) => (
                 <li key={cell.slug} className="flex items-center justify-between gap-4 px-5 py-4">

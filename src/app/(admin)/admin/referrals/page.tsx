@@ -1,4 +1,4 @@
-import { formatCents } from "@/config/business";
+import { formatCents, REFERRALS } from "@/config/business";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 import { decideReferral } from "./actions";
@@ -29,7 +29,8 @@ export default async function AdminReferralsPage() {
     <>
       <h1 className="text-3xl font-bold tracking-tight">Referrals</h1>
       <p className="mt-2 max-w-2xl text-base text-muted">
-        Give {formatCents(2000)} / Get {formatCents(2000)} after a referred account&apos;s first
+        Give {formatCents(REFERRALS.referredCustomerCreditCents)} / Get{" "}
+        {formatCents(REFERRALS.advocateCreditCents)} after a referred account&apos;s first
         paid cycle completes. Credits accrue as <strong>pending</strong> and only become spendable
         when approved here — flagged referrals need a look before approval.
       </p>

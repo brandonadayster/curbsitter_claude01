@@ -19,7 +19,7 @@ export default async function RouteCellsPage() {
   const supabase = createSupabaseAdminClient();
   const { data: cells } = await supabase
     .from("route_cells")
-    .select("id, name, slug, state, capacity")
+    .select("id, name, slug, state, capacity, center_latitude, center_longitude")
     .order("name");
 
   const { data: leadCounts } = await supabase
@@ -90,6 +90,34 @@ export default async function RouteCellsPage() {
                     defaultValue={cell.capacity ?? ""}
                     placeholder="capacity"
                     className="w-28 rounded-lg border border-border bg-surface-2 px-3 py-2 text-base"
+                  />
+                  <label className="sr-only" htmlFor={`center-lat-${cell.id}`}>
+                    Center latitude for {cell.name}
+                  </label>
+                  <input
+                    id={`center-lat-${cell.id}`}
+                    name="centerLatitude"
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    defaultValue={cell.center_latitude ?? ""}
+                    placeholder="center lat"
+                    className="w-32 rounded-lg border border-border bg-surface-2 px-3 py-2 text-base"
+                  />
+                  <label className="sr-only" htmlFor={`center-lng-${cell.id}`}>
+                    Center longitude for {cell.name}
+                  </label>
+                  <input
+                    id={`center-lng-${cell.id}`}
+                    name="centerLongitude"
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    defaultValue={cell.center_longitude ?? ""}
+                    placeholder="center lng"
+                    className="w-32 rounded-lg border border-border bg-surface-2 px-3 py-2 text-base"
                   />
                   <button
                     type="submit"
