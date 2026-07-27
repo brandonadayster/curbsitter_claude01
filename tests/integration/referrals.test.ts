@@ -12,7 +12,12 @@ const localStackAvailable =
   process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("127.0.0.1") &&
   Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const supabase = createSupabaseAdminClient();
+// Declared, not called: createSupabaseAdminClient() throws when no local
+// Supabase is configured (e.g. the CI "checks" job), and describe.skipIf
+// still executes this module body during collection even when the describe
+// block itself is skipped — only beforeAll/it callbacks are truly skipped.
+// Assigned in beforeAll below, once we know the suite will actually run.
+let supabase: ReturnType<typeof createSupabaseAdminClient>;
 
 async function makeAccount(name: string, email: string, stripeCustomer?: string) {
   const { data: account } = await supabase
@@ -36,6 +41,7 @@ describe.skipIf(!localStackAvailable)("maybeQualifyReferralForAccount", () => {
   let selfAccount: string;
 
   beforeAll(async () => {
+    supabase = createSupabaseAdminClient();
     advocateAccount = await makeAccount(`Advocate ${runId}`, `advocate-${runId}@test.local`, `cus_adv_${runId}`);
     referredAccount = await makeAccount(`Referred ${runId}`, `referred-${runId}@test.local`, `cus_ref_${runId}`);
     selfAccount = await makeAccount(`Self ${runId}`, `self-${runId}@test.local`, `cus_self_${runId}`);
