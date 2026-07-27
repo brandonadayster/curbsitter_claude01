@@ -81,6 +81,8 @@ export async function provisionE2E(db: SupabaseClient): Promise<void> {
     city: E2E.city,
     postal_code: E2E.postalCode,
     status: "active",
+    latitude: 34.5511,
+    longitude: -112.469,
   });
 
   await db.from("property_instructions").insert({

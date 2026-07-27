@@ -19,6 +19,8 @@ const updateCellSchema = z.object({
     "closed",
   ]),
   capacity: z.number().int().min(0).max(10000).nullable(),
+  centerLatitude: z.number().min(-90).max(90).nullable(),
+  centerLongitude: z.number().min(-180).max(180).nullable(),
 });
 
 export async function updateRouteCell(formData: FormData): Promise<void> {
@@ -28,20 +30,26 @@ export async function updateRouteCell(formData: FormData): Promise<void> {
     cellId: formData.get("cellId"),
     state: formData.get("state"),
     capacity: formData.get("capacity") ? Number(formData.get("capacity")) : null,
+    centerLatitude: formData.get("centerLatitude") ? Number(formData.get("centerLatitude")) : null,
+    centerLongitude: formData.get("centerLongitude") ? Number(formData.get("centerLongitude")) : null,
   });
   if (!parsed.success) throw new Error("Invalid route-cell update.");
 
   const supabase = createSupabaseAdminClient();
   const { data: before } = await supabase
     .from("route_cells")
-    .select("state, capacity")
+    .select("state, capacity, center_latitude, center_longitude")
     .eq("id", parsed.data.cellId)
     .single();
 
-  const { error } = await supabase
-    .from("route_cells")
-    .update({ state: parsed.data.state, capacity: parsed.data.capacity })
-    .eq("id", parsed.data.cellId);
+  const after = {
+    state: parsed.data.state,
+    capacity: parsed.data.capacity,
+    center_latitude: parsed.data.centerLatitude,
+    center_longitude: parsed.data.centerLongitude,
+  };
+
+  const { error } = await supabase.from("route_cells").update(after).eq("id", parsed.data.cellId);
   if (error) throw new Error(`Route-cell update failed: ${error.message}`);
 
   await auditLog({
@@ -50,7 +58,7 @@ export async function updateRouteCell(formData: FormData): Promise<void> {
     entity: "route_cells",
     entityId: parsed.data.cellId,
     before: before ?? undefined,
-    after: { state: parsed.data.state, capacity: parsed.data.capacity },
+    after,
   });
 
   revalidatePath("/admin/route-cells");

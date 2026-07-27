@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PropertyPinMap } from "@/components/map/property-pin-map";
 import { getSessionInfo } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -29,7 +30,9 @@ export default async function CustomerHomePage() {
   const [{ data: properties }, { data: subscriptions }, { data: upcoming }] = await Promise.all([
     supabase
       .from("properties")
-      .select("id, address_line1, address_line2, city, postal_code, status, collection_schedules(weekday, verification_status)")
+      .select(
+        "id, address_line1, address_line2, city, postal_code, status, latitude, longitude, collection_schedules(weekday, verification_status)",
+      )
       .order("created_at"),
     supabase
       .from("subscriptions")
@@ -91,43 +94,54 @@ export default async function CustomerHomePage() {
             to get started.
           </p>
         ) : (
-          <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-            {properties.map((property) => {
-              const subscription = (subscriptions ?? []).find(
-                (item) => item.property_id === property.id,
-              );
-              const schedule = property.collection_schedules?.[0];
-              return (
-                <li key={property.id}>
-                  <Link
-                    href={`/app/properties/${property.id}`}
-                    className="block h-full rounded-2xl border border-border bg-surface p-5 hover:border-cyan/60"
-                  >
-                    <p className="text-lg font-semibold">
-                      {property.address_line1}
-                      {property.address_line2 ? `, ${property.address_line2}` : ""}
-                    </p>
-                    <p className="text-base text-muted">
-                      {property.city} {property.postal_code}
-                    </p>
-                    <p className="mt-2 text-base">
-                      {subscription
-                        ? subscription.status === "pending_serviceability_review"
-                          ? "Pending property and route review"
-                          : subscription.status === "active" && subscription.cancel_at_period_end
-                            ? "Active — cancels at renewal"
-                            : subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)
-                        : "No subscription"}
-                      {schedule?.weekday !== null && schedule?.weekday !== undefined
-                        ? ` · ${WEEKDAYS[schedule.weekday]}s`
-                        : ""}
-                    </p>
-                    <p className="mt-2 text-base text-cyan underline">Instructions &amp; access →</p>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <PropertyPinMap
+              properties={properties.map((property) => ({
+                id: property.id,
+                addressLine1: property.address_line1,
+                latitude: property.latitude,
+                longitude: property.longitude,
+              }))}
+              className="mt-3 h-56 w-full overflow-hidden rounded-2xl"
+            />
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
+              {properties.map((property) => {
+                const subscription = (subscriptions ?? []).find(
+                  (item) => item.property_id === property.id,
+                );
+                const schedule = property.collection_schedules?.[0];
+                return (
+                  <li key={property.id}>
+                    <Link
+                      href={`/app/properties/${property.id}`}
+                      className="block h-full rounded-2xl border border-border bg-surface p-5 hover:border-cyan/60"
+                    >
+                      <p className="text-lg font-semibold">
+                        {property.address_line1}
+                        {property.address_line2 ? `, ${property.address_line2}` : ""}
+                      </p>
+                      <p className="text-base text-muted">
+                        {property.city} {property.postal_code}
+                      </p>
+                      <p className="mt-2 text-base">
+                        {subscription
+                          ? subscription.status === "pending_serviceability_review"
+                            ? "Pending property and route review"
+                            : subscription.status === "active" && subscription.cancel_at_period_end
+                              ? "Active — cancels at renewal"
+                              : subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)
+                          : "No subscription"}
+                        {schedule?.weekday !== null && schedule?.weekday !== undefined
+                          ? ` · ${WEEKDAYS[schedule.weekday]}s`
+                          : ""}
+                      </p>
+                      <p className="mt-2 text-base text-cyan underline">Instructions &amp; access →</p>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </section>
     </>

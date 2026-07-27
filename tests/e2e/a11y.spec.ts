@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * Fails on serious/critical violations — the audience skews older, so this is
  * a launch requirement, not a nicety.
  */
-const PUBLIC_PAGES = ["/", "/pricing", "/how-it-works", "/waitlist", "/faq"];
+const PUBLIC_PAGES = ["/", "/pricing", "/how-it-works", "/waitlist", "/faq", "/service-areas"];
 
 for (const path of PUBLIC_PAGES) {
   test(`no serious/critical a11y violations on ${path}`, async ({ page }) => {

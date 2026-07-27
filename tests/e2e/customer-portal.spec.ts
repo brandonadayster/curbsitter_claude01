@@ -49,3 +49,17 @@ test("customer can open a support ticket", async ({ page }) => {
   await page.getByRole("button", { name: /^Send$/ }).click();
   await expect(page.getByRole("heading", { name: /question about my schedule/i }).first()).toBeVisible();
 });
+
+test("overview shows a property map (or its fallback) for the seeded, located property", async ({
+  page,
+}) => {
+  await page.goto("/app");
+  await expect(page.getByRole("heading", { name: /your properties/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /88 Playwright Way/i })).toBeVisible();
+
+  // Real canvas when WebGL is available, accessible fallback otherwise —
+  // either is correct (see tests/e2e/service-areas-map.spec.ts for why).
+  const canvas = page.locator(".mapboxgl-canvas");
+  const fallback = page.getByText(/map view unavailable/i);
+  await expect(canvas.or(fallback).first()).toBeVisible({ timeout: 10_000 });
+});
