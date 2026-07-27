@@ -7,20 +7,18 @@
 -- ============================================================================
 --
 -- Synthetic development seed. No customer data, no fabricated public claims.
--- Plan/service prices mirror src/config/business.ts (locked 2026-07-13 pricing).
+-- Plan/service prices mirror src/config/business.ts (pricing revised 2026-07-27).
 
 insert into public.plans (id, public_name, monthly_price_cents, quarterly_price_cents, max_bins, collection_coverage, active)
 values
-  ('home', 'CurbSitter Home', 5900, 15900, 3, 'one_regular_day_per_week', true),
-  ('complete', 'CurbSitter Complete', 8900, 24000, 6, 'all_regular_collection_days', true)
+  ('home', 'CurbSitter Home', 6500, 16500, 3, 'one_regular_day_per_week', true),
+  ('complete', 'CurbSitter Complete', 8500, 22500, 6, 'all_regular_collection_days', true)
 on conflict (id) do nothing;
 
 insert into public.services (id, public_name, starting_price_cents, pricing_kind, active)
 values
-  ('one_time_trash_day', 'One-Time Trash Day', 3900, 'fixed', true),
-  ('bulk_pickup_coordination', 'Bulk Pickup Coordination', 4900, 'starting_at', true),
-  ('bulk_physical_placement', 'Bulk Physical Placement', 0, 'quote', true),
-  ('community_portfolio', 'Community & Portfolio', 0, 'quote', true)
+  ('one_time_trash_day', 'CurbSitter onDemand', 2500, 'fixed', true),
+  ('community_portfolio', 'CurbSitter Enterprise', 0, 'quote', true)
 on conflict (id) do nothing;
 
 insert into public.service_areas (id, name, kind)

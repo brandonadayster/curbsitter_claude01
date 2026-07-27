@@ -14,7 +14,6 @@ const PUBLIC_ROUTES = [
   "/vacation-rentals",
   "/hoa",
   "/trash-day-ondemand",
-  "/bulk-trash-pickup",
   "/faq",
   "/contact",
   "/waitlist",

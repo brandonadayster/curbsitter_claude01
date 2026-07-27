@@ -6,7 +6,7 @@ import { CheckList, CtaBand, PageHero, Section } from "@/components/site/section
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "CurbSitter Home $59/month or $159/quarter. CurbSitter Complete $89/month or $240/quarter. One-Time Trash Day $39. No surprise charges.",
+    "CurbSitter Home from $55/month. CurbSitter Complete from $75/month. Save with quarterly billing. CurbSitter onDemand $25 per service. No surprise charges.",
 };
 
 export default function PricingPage() {
@@ -54,7 +54,7 @@ export default function PricingPage() {
         <CheckList
           items={[
             "Monthly plans renew monthly.",
-            "Discounted quarterly plans are prepaid by ACH and renew every three months.",
+            "Discounted quarterly plans are prepaid — payable by card or ACH — and renew every three months.",
             "Pause or cancellation applies to the next unperformed service cycle and future renewals.",
             "Standard service never includes waste transport, municipal collection charges, junk hauling, or hazardous-material handling.",
           ]}

@@ -76,6 +76,13 @@ docs/operations/README.md and docs/legal/README.md.
 
 ## Post-launch changes
 
+- [x] PP-01 Pricing pivot (2026-07-27). Repriced Home ($65/mo · $55/mo-quarterly) and Complete
+  ($85/mo · $75/mo-quarterly); quarterly now shown as a discounted per-month rate via an accessible
+  Monthly/Quarterly toggle on the pricing cards, payable by card or ACH (D-004/D-012/D-023 revised).
+  Renamed "One-Time Trash Day" → "CurbSitter onDemand" ($39 → $25) and "Community & Portfolio" →
+  "CurbSitter Enterprise" (display-only; internal ids unchanged). **Removed Bulk Pickup Coordination
+  entirely** — routes, config, feature flags, nav, and admin tooling deleted (D-007 retired); this
+  supersedes P6-03/P6-04. No cycle-engine or plan-id changes.
 - [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
   `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
   copy, admin referrals page) to read from config instead, and updated tests/docs.

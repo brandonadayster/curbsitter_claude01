@@ -6,6 +6,4 @@
 export const FEATURES = {
   homeWatch: false,
   hostShield: false,
-  bulkPickupCoordination: true,
-  bulkPhysicalPlacement: true, // request allowed; every placement is admin-quoted
 } as const;

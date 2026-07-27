@@ -7,7 +7,6 @@ const PORTAL_NAV = [
   { href: "/app", label: "Overview" },
   { href: "/app/history", label: "Service History" },
   { href: "/app/billing", label: "Billing" },
-  { href: "/app/bulk-pickup", label: "Bulk Pickup" },
   { href: "/app/referrals", label: "Referrals" },
   { href: "/app/notifications", label: "Notifications" },
   { href: "/app/support", label: "Support" },

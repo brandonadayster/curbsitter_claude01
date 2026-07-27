@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { formatCents } from "@/config/business";
+import { formatCents, ONE_TIME, PLANS, quarterlyMonthlyEquivalentCents } from "@/config/business";
 import {
   stage1Schema,
   stage2Schema,
@@ -424,9 +424,18 @@ export function OnboardingFlow({
           <fieldset className="rounded-lg border border-border p-4">
             <legend className="px-1 text-base font-medium">Service</legend>
             {[
-              { id: "home", label: "CurbSitter Home — $59/month or $159/quarter (up to 3 bins, one collection day)" },
-              { id: "complete", label: "CurbSitter Complete — $89/month or $240/quarter (up to 6 bins, every collection day)" },
-              { id: "one_time_trash_day", label: "One-Time Trash Day — $39 (up to 3 bins, single visit)" },
+              {
+                id: "home",
+                label: `${PLANS.home.publicName} — ${formatCents(PLANS.home.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("home"))}/month billed quarterly (up to ${PLANS.home.maxBins} bins, one collection day)`,
+              },
+              {
+                id: "complete",
+                label: `${PLANS.complete.publicName} — ${formatCents(PLANS.complete.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("complete"))}/month billed quarterly (up to ${PLANS.complete.maxBins} bins, every collection day)`,
+              },
+              {
+                id: "one_time_trash_day",
+                label: `${ONE_TIME.trashDayPublicName} — ${formatCents(ONE_TIME.trashDayPriceCents)} per service (up to ${ONE_TIME.trashDayIncludedBins} bins, single visit)`,
+              },
             ].map((option) => (
               <label key={option.id} className="flex items-start gap-3 py-1.5 text-lg">
                 <input
@@ -450,7 +459,7 @@ export function OnboardingFlow({
               </label>
               <label className="flex items-center gap-3 py-1 text-lg">
                 <input type="radio" name="interval" className="h-5 w-5" checked={billingInterval === "quarterly"} onChange={() => setBillingInterval("quarterly")} />
-                Quarterly — discounted, prepaid by bank account (ACH)
+                Quarterly — discounted, prepaid every 3 months (card or bank/ACH)
               </label>
             </fieldset>
           ) : null}
@@ -586,7 +595,7 @@ export function OnboardingFlow({
                       ? " one-time"
                       : quote.recurrence === "monthly"
                         ? "/month, renews monthly"
-                        : "/quarter, prepaid by ACH, renews every 3 months"}
+                        : "/quarter, prepaid (card or ACH), renews every 3 months"}
                   </span>
                 </p>
                 {!quote.binLimitOk ? (
