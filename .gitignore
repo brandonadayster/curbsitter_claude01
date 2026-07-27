@@ -47,3 +47,8 @@ supabase/.temp/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# local-only session handoff notes (may contain credentials — never commit)
+session-notes.md
+*.local
+.swoop-credentials*
