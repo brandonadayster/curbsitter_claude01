@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import type { MapLayerMouseEvent } from "mapbox-gl";
 import Map from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -20,6 +21,9 @@ export interface MapBaseProps {
   children?: ReactNode;
   /** Rendered instead of the map when the token is missing or the map fails to load. */
   fallback: ReactNode;
+  /** Layer ids `onClick` should hit-test against — needed for click-to-popup on a fill/line Layer (Markers get onClick directly). */
+  interactiveLayerIds?: string[];
+  onClick?: (event: MapLayerMouseEvent) => void;
 }
 
 /**
@@ -33,7 +37,15 @@ export interface MapBaseProps {
  * triggered anywhere Phase A/B uses this — Mapbox GL JS respects
  * `prefers-reduced-motion` for its own internal transitions.
  */
-export function MapBase({ initialViewState, interactive = false, className, children, fallback }: MapBaseProps) {
+export function MapBase({
+  initialViewState,
+  interactive = false,
+  className,
+  children,
+  fallback,
+  interactiveLayerIds,
+  onClick,
+}: MapBaseProps) {
   const [failed, setFailed] = useState(false);
 
   if (!MAPBOX_TOKEN || failed) {
@@ -52,6 +64,8 @@ export function MapBase({ initialViewState, interactive = false, className, chil
         pitchWithRotate={false}
         touchPitch={false}
         onError={() => setFailed(true)}
+        interactiveLayerIds={interactiveLayerIds}
+        onClick={onClick}
       >
         {children}
       </Map>

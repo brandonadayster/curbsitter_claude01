@@ -93,9 +93,19 @@ docs/operations/README.md and docs/legal/README.md.
   migration + admin edit UI, and an RLS-scoped `createSupabaseAnonClient` for ISR-safe public reads.
   Admin multi-layer map, runner density map, and the waitlist-unlock gamification mechanic are
   explicitly deferred to separate future tickets.
+- [x] PP-04 Admin multi-layer/search map (2026-07-27). Built the deferred admin ops map at
+  `/admin/map`: route cells (colored by state) and every property across all accounts (colored by
+  status) as independently toggleable layers on one `MapBase`, with a text search over cell
+  name/slug, property address/city, or owning-account name (no dedicated HOA/subdivision tag column
+  exists yet, so an HOA search works by account name), and click-to-popup for per-cell
+  capacity/active-properties/MRR (reusing `getActiveMrrByCellId`, extracted from
+  `getRouteCellReports` with no behavior change) and per-property status/account. Always-rendered
+  accessible tables carry the same filtered data as the map. New `src/lib/admin-map.ts`,
+  `src/components/map/admin-map-data.ts`/`admin-ops-map.tsx`/`admin-map-view.tsx`; `MapBase` gained
+  optional `interactiveLayerIds`/`onClick` passthrough props (additive, non-breaking).
 
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-03`
+`CURRENT: PP-04`

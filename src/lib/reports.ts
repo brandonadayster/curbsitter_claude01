@@ -93,15 +93,10 @@ export async function getExceptionBuckets(): Promise<ExceptionBucket[]> {
     .sort((a, b) => b.count - a.count);
 }
 
-export async function getRouteCellReports(): Promise<RouteCellReport[]> {
+/** Active subscriptions aggregated by their property's route cell (null = unassigned). */
+export async function getActiveMrrByCellId(): Promise<Map<string | null, { count: number; mrr: number }>> {
   const supabase = createSupabaseAdminClient();
 
-  const { data: cells } = await supabase
-    .from("route_cells")
-    .select("id, name, state")
-    .order("name");
-
-  // Active subscriptions joined to their property's route cell.
   const { data: subs } = await supabase
     .from("subscriptions")
     .select("plan_id, billing_interval, status, properties(route_cell_id)")
@@ -117,6 +112,19 @@ export async function getRouteCellReports(): Promise<RouteCellReport[]> {
     entry.mrr += monthly;
     byCell.set(cellId, entry);
   }
+
+  return byCell;
+}
+
+export async function getRouteCellReports(): Promise<RouteCellReport[]> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: cells } = await supabase
+    .from("route_cells")
+    .select("id, name, state")
+    .order("name");
+
+  const byCell = await getActiveMrrByCellId();
 
   const reports: RouteCellReport[] = (cells ?? []).map((cell) => {
     const entry = byCell.get(cell.id) ?? { count: 0, mrr: 0 };
