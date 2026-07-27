@@ -23,7 +23,10 @@ test("service-areas page shows the map or its accessible fallback, never a broke
   await expect(page.getByRole("heading", { name: /route status by neighborhood/i })).toBeVisible();
 
   // Accessible text list stays present and is the source of truth either way.
-  await expect(page.getByText(/prescott lakes/i)).toBeVisible();
+  // `.first()`: RouteCellMapFallback shows its own copy of the same cell
+  // names when the map can't render, so "Prescott Lakes" can legitimately
+  // appear twice (page list + fallback list) — either is a correct pass.
+  await expect(page.getByText(/prescott lakes/i).first()).toBeVisible();
 
   // Exactly one of: a real Mapbox canvas (WebGL available) or the labeled
   // fallback region (WebGL unavailable / token missing) — never neither.
