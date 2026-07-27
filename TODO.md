@@ -79,9 +79,16 @@ docs/operations/README.md and docs/legal/README.md.
 - [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
   `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
   copy, admin referrals page) to read from config instead, and updated tests/docs.
+- [x] PP-03 Interactive map foundation slice (2026-07-27). Built the "Route-cell status map and
+  legend" documented in `FRONTEND_GUIDELINES.md` but never implemented (public `/service-areas`,
+  colored/labeled by state only, no counts), plus a customer-dashboard property-pin map on `/app`.
+  New shared `MapBase`/`RouteCellMap`/`PropertyPinMap` components, a `route_cells` center-point
+  migration + admin edit UI, and an RLS-scoped `createSupabaseAnonClient` for ISR-safe public reads.
+  Admin multi-layer map, runner density map, and the waitlist-unlock gamification mechanic are
+  explicitly deferred to separate future tickets.
 
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-02`
+`CURRENT: PP-03`
