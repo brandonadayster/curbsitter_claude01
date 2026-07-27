@@ -15,7 +15,11 @@ const localStackAvailable =
 
 describe.skipIf(!localStackAvailable)("generateCyclesForDate pause gating", () => {
   const runId = Date.now();
-  const supabase = createSupabaseAdminClient();
+  // Declared, not called: describe.skipIf still executes this describe body
+  // during collection even when skipped — only beforeAll/it callbacks are
+  // truly skipped. createSupabaseAdminClient() throws with no local Supabase
+  // configured (e.g. the CI "checks" job), so defer the call into beforeAll.
+  let supabase: ReturnType<typeof createSupabaseAdminClient>;
   let propertyId: string;
   let subscriptionId: string;
 
@@ -25,6 +29,7 @@ describe.skipIf(!localStackAvailable)("generateCyclesForDate pause gating", () =
   const weekday = phoenixWeekday(dateA);
 
   beforeAll(async () => {
+    supabase = createSupabaseAdminClient();
     const { data: account } = await supabase
       .from("accounts")
       .insert({ name: `Cycle Test ${runId}` })
