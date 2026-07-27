@@ -74,8 +74,18 @@ standards (#8), customer-service SLA (#9), HOA pilot pricing/reporting (#11),
 pause/cancel cutoff (#12), and the optional founder offer (#2). See
 docs/operations/README.md and docs/legal/README.md.
 
+## Post-launch changes
+
+- [x] PP-01 Pricing pivot (2026-07-27). Repriced Home ($65/mo · $55/mo-quarterly) and Complete
+  ($85/mo · $75/mo-quarterly); quarterly now shown as a discounted per-month rate via an accessible
+  Monthly/Quarterly toggle on the pricing cards, payable by card or ACH (D-004/D-012/D-023 revised).
+  Renamed "One-Time Trash Day" → "CurbSitter onDemand" ($39 → $25) and "Community & Portfolio" →
+  "CurbSitter Enterprise" (display-only; internal ids unchanged). **Removed Bulk Pickup Coordination
+  entirely** — routes, config, feature flags, nav, and admin tooling deleted (D-007 retired); this
+  supersedes P6-03/P6-04. No cycle-engine or plan-id changes.
+
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: P7-01`
+`CURRENT: PP-01`

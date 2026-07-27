@@ -38,7 +38,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "How does billing work?",
-    a: "Monthly plans renew monthly by card or other approved methods. Discounted quarterly plans are prepaid by ACH and renew every three months. There's no long-term contract.",
+    a: "Monthly plans renew monthly by card. Discounted quarterly plans are prepaid — payable by card or ACH — and renew every three months. You can view the quarterly rate as a per-month price using the toggle on the pricing page. There's no long-term contract.",
   },
   {
     q: "How do I pause or cancel?",

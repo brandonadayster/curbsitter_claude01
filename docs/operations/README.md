@@ -15,7 +15,7 @@ non-legal parts of Phase 7 in `TODO.md`. Each is written to be consistent with
 |---|---|---|
 | `route-cell-activation-runbook.md` | OD #3 | Criteria + steps to open a route cell live |
 | `complexity-and-access-adjustment-policy.md` | OD #4 | Thresholds and adjustments for hard-access properties |
-| `bulk-pickup-coordination-sop.md` | OD #5 | Provider-authorization + physical-placement limits |
+| `bulk-pickup-coordination-sop.md` | OD #5 (closed) | RETIRED 2026-07-27 (D-007) — kept for reference only |
 | `referral-operational-policy.md` | OD #6 | Fraud-review workflow + expiration/tax placeholders |
 | `data-retention-schedule.md` | OD #7 | Authoritative retention table + deletion mechanics |
 | `worker-and-field-standards.md` | OD #8 | Employment/contractor model, checks, driving, insurance |

@@ -16,8 +16,12 @@ export interface PlanConfig {
   publicName: string;
   monthlyPriceCents: number;
   quarterlyPriceCents: number;
-  /** Quarterly plans are prepaid by ACH and renew every three months (D-004/D-012). */
-  quarterlyPaymentMethod: "ach_debit_prepaid";
+  /**
+   * Quarterly plans are prepaid and renew every three months (D-012). The
+   * quarterly amount is displayed as a discounted per-month rate via the pricing
+   * toggle (D-004 revision, 2026-07-27). Payable by card or ACH.
+   */
+  quarterlyPaymentMethod: "card_or_ach_prepaid";
   maxBins: number;
   collectionCoverage: "one_regular_day_per_week" | "all_regular_collection_days";
   includesTrashAndRecyclingWithinCoveredDays: true;
@@ -41,9 +45,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   home: {
     id: "home",
     publicName: "CurbSitter Home",
-    monthlyPriceCents: 5900,
-    quarterlyPriceCents: 15900,
-    quarterlyPaymentMethod: "ach_debit_prepaid",
+    monthlyPriceCents: 6500,
+    quarterlyPriceCents: 16500,
+    quarterlyPaymentMethod: "card_or_ach_prepaid",
     maxBins: 3,
     collectionCoverage: "one_regular_day_per_week",
     includesTrashAndRecyclingWithinCoveredDays: true,
@@ -53,9 +57,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   complete: {
     id: "complete",
     publicName: "CurbSitter Complete",
-    monthlyPriceCents: 8900,
-    quarterlyPriceCents: 24000,
-    quarterlyPaymentMethod: "ach_debit_prepaid",
+    monthlyPriceCents: 8500,
+    quarterlyPriceCents: 22500,
+    quarterlyPaymentMethod: "card_or_ach_prepaid",
     maxBins: 6,
     collectionCoverage: "all_regular_collection_days",
     includesTrashAndRecyclingWithinCoveredDays: true,
@@ -71,12 +75,11 @@ export const COMMUNITY_PORTFOLIO = {
 } as const;
 
 export const ONE_TIME = {
-  trashDayPriceCents: 3900,
+  trashDayPublicName: "CurbSitter onDemand",
+  trashDayPriceCents: 2500,
   trashDayIncludedBins: 3,
   trashDayRequiresActiveRoute: true,
   trashDayRequiresCapacity: true,
-  bulkPickupCoordinationStartingCents: 4900,
-  bulkPhysicalPlacement: "separate_review_and_quote",
 } as const;
 
 export const SERVICE_WINDOWS = {
@@ -128,4 +131,13 @@ export function formatCents(cents: number): string {
 export function getPlanPriceCents(planId: PlanId, interval: BillingInterval): number {
   const plan = PLANS[planId];
   return interval === "monthly" ? plan.monthlyPriceCents : plan.quarterlyPriceCents;
+}
+
+/**
+ * The quarterly charge expressed as a discounted per-month rate, for display in
+ * the pricing toggle (D-004 revision, 2026-07-27). The customer is still charged
+ * the full quarterly amount (`quarterlyPriceCents`) once every three months.
+ */
+export function quarterlyMonthlyEquivalentCents(planId: PlanId): number {
+  return Math.round(PLANS[planId].quarterlyPriceCents / 3);
 }

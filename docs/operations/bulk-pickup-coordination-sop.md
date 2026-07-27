@@ -1,7 +1,13 @@
-# Bulk Pickup Coordination SOP & Physical-Placement Limits — DRAFT
+# Bulk Pickup Coordination SOP & Physical-Placement Limits — RETIRED
 
-> Resolves OPEN_DECISIONS #5. Consistent with D-007 and the Bulk Pickup flow
-> already built (`/app/bulk-pickup`, `/admin/orders`). Coordination only;
+> **RETIRED 2026-07-27 (D-007 retired).** Bulk Pickup Coordination was removed
+> from the product — the `/app/bulk-pickup` and `/admin/orders` routes, pricing,
+> config, and feature flags were deleted. This SOP is kept for reference only in
+> case the service is revisited later via a new ADR; it does not describe a live
+> offer.
+
+> _(Historical draft below.)_ Resolves OPEN_DECISIONS #5. Consistent with the
+> Bulk Pickup flow that was built and later removed. Coordination only;
 > CurbSitter never hauls or disposes.
 
 ## Scope

@@ -6,7 +6,7 @@ These are not permission for an agent to improvise. The owner must resolve them 
 2. Founder offer, if any, and duration/eligibility. Standard prices are locked.
 3. Exact active route cells, capacity, and start dates.
 4. Complexity thresholds and adjustment ranges for long/steep/garage/gate/shared-bin properties.
-5. Bulk Pickup Coordination provider-authorization procedure and separately quoted physical-placement limits.
+5. ~~Bulk Pickup Coordination provider-authorization procedure and separately quoted physical-placement limits.~~ **Closed 2026-07-27 (D-007 retired):** Bulk Pickup Coordination was removed from the product; no longer an open decision.
 6. Referral credit cap, expiration, tax/accounting treatment, and fraud policy. **Cap resolved 2026-07-23 (D-022): no cap.** Expiration, tax treatment, and full fraud policy still open.
 7. Photo/access data retention period after account closure.
 8. Worker employment/contractor model, background checks, driving standards, and insurance.

@@ -3,7 +3,7 @@ import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Active-route + capacity gate for One-Time Trash Day (D-020 / ONE_TIME rules):
+ * Active-route + capacity gate for CurbSitter onDemand (D-020 / ONE_TIME rules):
  * only accept inside an active route cell that still has capacity. Prevents a
  * growth add-on from creating work on an unserviceable or full route
  * (Phase 6 exit criterion).

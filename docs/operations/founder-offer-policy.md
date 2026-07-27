@@ -6,7 +6,7 @@
 
 ## Guardrails (non-negotiable)
 
-- Standard prices stay locked: Home $59/$159, Complete $89/$240, One-Time $39.
+- Standard prices stay locked (revised 2026-07-27): Home $65/mo ($55/mo billed quarterly), Complete $85/mo ($75/mo billed quarterly), CurbSitter onDemand $25/service.
 - Any offer is **time-limited** and **financially approved** before launch.
 - No stacked discounts and no punitive card surcharges (D-004 / retired-decisions).
 - Disclose terms clearly; honor them; don't extend informally.
@@ -16,7 +16,7 @@
 
 1. **Founding-member benefit (recommended, margin-safe):**
    - "First `[N]` homes on a route get `[a small perk]`" — e.g., a founder badge,
-     priority support, or `[one included One-Time Trash Day credit]` — rather than
+     priority support, or `[one included CurbSitter onDemand credit]` — rather than
      a price cut.
 2. **Time-boxed intro credit:**
    - "`[$__]` account credit after your first completed paid cycle, for signups

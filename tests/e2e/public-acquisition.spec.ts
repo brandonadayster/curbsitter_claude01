@@ -55,9 +55,20 @@ test("onboarding supports buying for someone else and reveals recipient fields",
   await page.getByLabel("Email").first().fill(`payer-${Date.now()}@e2e.curbsitter.test`);
 });
 
-test("pricing page shows the locked Home and Complete prices", async ({ page }) => {
+test("pricing page shows monthly prices and the quarterly toggle swaps them", async ({ page }) => {
   await page.goto("/pricing");
-  await expect(page.getByText("$59", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("$89", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText(/\$159\/quarter/i).first()).toBeVisible();
+
+  // Default view is monthly per-month pricing.
+  await expect(page.getByText("$65", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("$85", { exact: false }).first()).toBeVisible();
+
+  // Toggling to quarterly swaps each card to the discounted per-month rate and
+  // discloses the full quarterly charge.
+  await page.getByRole("switch", { name: /quarterly pricing/i }).click();
+  await expect(page.getByText("$55", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(/\$165 every 3 months/i).first()).toBeVisible();
+
+  // CurbSitter onDemand replaces the old One-Time Trash Day at $25.
+  await expect(page.getByText("CurbSitter onDemand").first()).toBeVisible();
+  await expect(page.getByText("$25", { exact: false }).first()).toBeVisible();
 });
