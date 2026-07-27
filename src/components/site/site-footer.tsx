@@ -8,8 +8,7 @@ const FOOTER_GROUPS = [
     links: [
       { href: "/how-it-works", label: "How It Works" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/trash-day-ondemand", label: "One-Time Trash Day" },
-      { href: "/bulk-trash-pickup", label: "Bulk Pickup Coordination" },
+      { href: "/trash-day-ondemand", label: "CurbSitter onDemand" },
       { href: "/service-areas", label: "Service Areas" },
     ],
   },

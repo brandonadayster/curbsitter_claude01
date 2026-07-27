@@ -14,36 +14,42 @@ business:
   email: "support@curbsitter.com"
   domain: "curbsitter.com"
 
+# Pricing revised 2026-07-27 (D-004/D-012/D-023). Quarterly is a discounted
+# per-month rate shown via the pricing toggle; the customer is charged the full
+# quarterly_price_cents once every three months (payable by card or ACH).
 plans:
   home:
     public_name: "CurbSitter Home"
-    monthly_price_cents: 5900
-    quarterly_price_cents: 15900
-    quarterly_payment_method: "ach_debit_prepaid"
+    monthly_price_cents: 6500
+    quarterly_price_cents: 16500   # $55/mo billed quarterly
+    quarterly_payment_method: "card_or_ach_prepaid"
     max_bins: 3
     collection_coverage: "one_regular_day_per_week"
     includes_trash_and_recycling_within_covered_days: true
   complete:
     public_name: "CurbSitter Complete"
-    monthly_price_cents: 8900
-    quarterly_price_cents: 24000
-    quarterly_payment_method: "ach_debit_prepaid"
+    monthly_price_cents: 8500
+    quarterly_price_cents: 22500   # $75/mo billed quarterly
+    quarterly_payment_method: "card_or_ach_prepaid"
     max_bins: 6
     collection_coverage: "all_regular_collection_days"
     includes_trash_and_recycling_within_covered_days: true
 
+# Formerly "Community & Portfolio"; renamed to CurbSitter Enterprise (D-023).
 community_portfolio:
+  public_name: "CurbSitter Enterprise"
   pricing: "custom_quote"
   centralized_reporting: true
   multi_property_controls: true
 
+# Formerly "One-Time Trash Day"; renamed to CurbSitter onDemand (D-023).
+# Bulk Pickup Coordination removed (D-007 retired 2026-07-27).
 one_time:
-  trash_day_price_cents: 3900
+  trash_day_public_name: "CurbSitter onDemand"
+  trash_day_price_cents: 2500
   trash_day_included_bins: 3
   trash_day_requires_active_route: true
   trash_day_requires_capacity: true
-  bulk_pickup_coordination_starting_cents: 4900
-  bulk_physical_placement: "separate_review_and_quote"
 
 included_service:
   photo_confirmation_every_visit: true
@@ -99,7 +105,7 @@ The following must be confirmed before production launch:
 - Legal business name and entity details.
 - Public phone, email, and domain.
 - Exact active route cells and start dates.
-- Any founder offer; standard plan and one-time prices above are locked.
+- Any founder offer; standard plan and one-time prices above are locked (revised 2026-07-27).
 - Referral credit cap and expiration.
 - Insurance coverage and policy identifiers.
 - Terms, privacy policy, ACH authorization, SMS consent language, and Arizona-specific legal review.

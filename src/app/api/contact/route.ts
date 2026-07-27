@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 const contactSchema = z.object({
   fullName: z.string().trim().min(2, "Enter your name.").max(120),
   email: z.string().trim().email("Enter a valid email address."),
-  topic: z.enum(["general", "service", "hoa", "portfolio", "bulk"]),
+  topic: z.enum(["general", "service", "hoa", "portfolio"]),
   message: z.string().trim().min(10, "Tell us a little more so we can help.").max(4000),
 });
 

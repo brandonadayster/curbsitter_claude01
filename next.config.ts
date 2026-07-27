@@ -64,7 +64,9 @@ const nextConfig: NextConfig = {
       { source: "/for-vacation-rentals", destination: "/vacation-rentals", permanent: true },
       { source: "/for-hoas", destination: "/hoa", permanent: true },
       { source: "/one-time-trash-day", destination: "/trash-day-ondemand", permanent: true },
-      { source: "/bulk-pickup-coordination", destination: "/bulk-trash-pickup", permanent: true },
+      // Bulk Pickup Coordination was retired (D-007 retired 2026-07-27); send old links to pricing.
+      { source: "/bulk-pickup-coordination", destination: "/pricing", permanent: true },
+      { source: "/bulk-trash-pickup", destination: "/pricing", permanent: true },
       { source: "/service-areas/prescott-az", destination: "/service-areas/prescott", permanent: true },
     ];
   },

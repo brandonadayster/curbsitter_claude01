@@ -21,27 +21,28 @@ function stage3(overrides: Partial<Stage3> = {}): Stage3 {
 }
 
 describe("buildQuote", () => {
-  it("prices Home monthly at $59", () => {
+  it("prices Home monthly at $65", () => {
     const quote = buildQuote(stage3());
-    expect(quote.amountDueCents).toBe(5900);
+    expect(quote.amountDueCents).toBe(6500);
     expect(quote.recurrence).toBe("monthly");
     expect(quote.binLimitOk).toBe(true);
   });
 
-  it("prices Home quarterly at $159 prepaid ACH", () => {
+  it("charges the full quarter ($165) for Home quarterly, prepaid", () => {
     const quote = buildQuote(stage3({ billingInterval: "quarterly" }));
-    expect(quote.amountDueCents).toBe(15900);
-    expect(quote.description).toContain("ACH");
+    expect(quote.amountDueCents).toBe(16500);
+    expect(quote.description).toContain("quarterly");
   });
 
-  it("prices Complete quarterly at $240", () => {
+  it("charges the full quarter ($225) for Complete quarterly", () => {
     const quote = buildQuote(stage3({ serviceChoice: "complete", billingInterval: "quarterly" }));
-    expect(quote.amountDueCents).toBe(24000);
+    expect(quote.amountDueCents).toBe(22500);
   });
 
-  it("prices One-Time Trash Day at $39 with no recurrence", () => {
+  it("prices CurbSitter onDemand at $25 with no recurrence", () => {
     const quote = buildQuote(stage3({ serviceChoice: "one_time_trash_day" }));
-    expect(quote.amountDueCents).toBe(3900);
+    expect(quote.amountDueCents).toBe(2500);
+    expect(quote.description).toBe("CurbSitter onDemand");
     expect(quote.recurrence).toBe("one_time");
     expect(quote.billingInterval).toBeNull();
   });

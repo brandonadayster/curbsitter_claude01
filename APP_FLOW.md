@@ -38,7 +38,7 @@ Cards link to seniors/caregivers, snowbirds, vacation rentals/property managers,
 
 ### Pricing preview
 
-Show Home $59/month or $159/quarter, Complete $89/month or $240/quarter, and Community & Portfolio custom proposal. Keep One-Time Trash Day $39 and Bulk Pickup Coordination from $49 below the subscription offer. Do not lead with a giant option matrix.
+Show Home ($65/month, or $55/month billed quarterly) and Complete ($85/month, or $75/month billed quarterly) with a Monthly/Quarterly toggle that swaps each card's per-month price, and CurbSitter Enterprise as a custom proposal. Keep CurbSitter onDemand ($25/service) below the subscription offer. Bulk Pickup Coordination was removed (D-007 retired). Do not lead with a giant option matrix.
 
 ### Proof and trust
 

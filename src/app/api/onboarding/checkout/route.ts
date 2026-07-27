@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     return apiError(409, "bin_limit", "The bin count exceeds this plan's limit. Adjust the plan or bin count.");
   }
 
-  // One-Time Trash Day is only available inside an active route cell with
+  // CurbSitter onDemand is only available inside an active route cell with
   // capacity (D-020). Subscriptions still go through admin serviceability
   // review, so this extra gate applies only to the immediate one-time service.
   if (quote.serviceChoice === "one_time_trash_day") {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       const message =
         capacity.reason === "at_capacity"
           ? "This route is at capacity for one-time service right now. Try a subscription or check back soon."
-          : "One-Time Trash Day is only available on active routes. Your address isn't on one yet — join the waitlist and we'll let you know when it opens.";
+          : "CurbSitter onDemand is only available on active routes. Your address isn't on one yet — join the waitlist and we'll let you know when it opens.";
       return apiError(409, "one_time_unavailable", message);
     }
   }
@@ -120,9 +120,10 @@ export async function POST(request: NextRequest) {
           }
         : {
             mode: "subscription",
-            // Quarterly plans are prepaid by ACH (D-004/D-012).
+            // Quarterly plans are prepaid and billed every 3 months; payable by
+            // card or ACH (D-012, revised 2026-07-27). Monthly is card.
             payment_method_types:
-              quote.recurrence === "quarterly" ? ["us_bank_account"] : ["card"],
+              quote.recurrence === "quarterly" ? ["card", "us_bank_account"] : ["card"],
             line_items: [
               {
                 price_data: {

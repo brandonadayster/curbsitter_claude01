@@ -16,7 +16,7 @@ The route is the product. Great branding cannot rescue scattered stops, ambiguou
 
 ## Acceptance
 
-Accept when the address is serviceable, schedule aligns, access is safe, route capacity exists, and the customer accepts the window and terms. Waitlist or quote when density, distance, complexity, or capacity is wrong. Decline unsafe access, entering occupied living space, unsecured aggressive animals, exact-time demands, prohibited bulk requests, physical-placement work outside approved limits, or economics that do not work.
+Accept when the address is serviceable, schedule aligns, access is safe, route capacity exists, and the customer accepts the window and terms. Waitlist or quote when density, distance, complexity, or capacity is wrong. Decline unsafe access, entering occupied living space, unsecured aggressive animals, exact-time demands, or economics that do not work.
 
 ## Route economics
 
@@ -82,17 +82,13 @@ Runners may stop work for ice, lightning, wildfire restrictions, aggressive anim
 
 Do not waste repeated visits without evidence. Use route/area signals, customer/runner reports, and a configurable recheck policy. Customer sees "collection delayed" rather than a fake completed return.
 
-## One-Time Trash Day SOP
+## CurbSitter onDemand SOP
 
 Accept only in active route cells with capacity. Verify up to 3 bins, provider/day, rollout and return locations, access, and contact details. Generate the same two-task cycle, proof, exception, and notification rules used for subscriptions.
 
 ## Minor javelina/wind reset
 
 When discovered during a scheduled visit, upright the bin, recover a minor immediate spill that can be handled safely within the stop, photograph the corrected condition, and continue. Escalate or quote widespread debris, sharp/hazardous material, excessive cleanup, or any separate dispatch.
-
-## Bulk Pickup Coordination SOP
-
-Collect item photos/list, provider, eligibility rules, customer authorization, requested appointment, and pickup location. Record appointment details and placement instructions, then monitor/report status. Do not guarantee provider acceptance or pickup. Physical placement is a separate quote and must pass weight, handling, access, terrain, staffing, and insurance limits.
 
 ## Core KPIs
 

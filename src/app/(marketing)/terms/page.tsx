@@ -29,8 +29,8 @@ export default function TermsPage() {
       </p>
       <h2>Billing</h2>
       <p>
-        Monthly plans renew monthly. Quarterly plans are prepaid by ACH and renew every three
-        months. There is no long-term contract. Pauses and cancellations apply to future
+        Monthly plans renew monthly. Quarterly plans are prepaid — payable by card or ACH — and
+        renew every three months. There is no long-term contract. Pauses and cancellations apply to future
         unperformed service cycles under the published cutoff rules.
       </p>
       <h2>Access and safety</h2>

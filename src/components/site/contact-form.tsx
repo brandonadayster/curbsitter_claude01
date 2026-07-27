@@ -110,7 +110,6 @@ export function ContactForm() {
           <option value="service">My service</option>
           <option value="hoa">HOA / community proposal</option>
           <option value="portfolio">Property manager / portfolio</option>
-          <option value="bulk">Bulk pickup coordination</option>
         </select>
       </div>
       <div>

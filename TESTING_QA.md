@@ -34,7 +34,7 @@ Every pull request runs formatting, lint, typecheck, unit tests, affected integr
 - Gate failure -> secure update -> retry/close.
 - Hauler missed -> delayed cycle -> recheck.
 - Payment failure and pause/cancel around generated tasks.
-- One-Time Trash Day active-route/capacity flow; Bulk Pickup Coordination authorization/status and separate physical-placement quote flow.
+- CurbSitter onDemand active-route/capacity flow.
 
 ## Accessibility and device matrix
 

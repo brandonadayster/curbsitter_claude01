@@ -19,8 +19,7 @@
 - [ ] **Commercial auto** and/or **hired & non-owned auto** (if personal vehicles
       are used for routes).
 - [ ] **Workers' compensation** (required in Arizona for employees).
-- [ ] **Property in care, custody & control** (handling customer bins / bulk
-      items).
+- [ ] **Property in care, custody & control** (handling customer bins).
 - [ ] **Cyber / privacy liability** (photos, access data, PII).
 - [ ] Umbrella/excess as advised.
 - [ ] Certificates of insurance ready for HOA/portfolio clients that require them.
@@ -37,7 +36,6 @@
 - [ ] Accessibility statement — accurate to delivered product.
 - [ ] Worker agreement / offer letter (per classification decision).
 - [ ] HOA/portfolio contract template (for community deals).
-- [ ] Bulk-pickup customer authorization language (per SOP).
 
 ## Compliance items
 

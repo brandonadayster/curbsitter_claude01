@@ -8,15 +8,16 @@ This file translates the locked pricing/service package into build rules. It doe
 
 ## Public offer
 
+_Revised 2026-07-27 (D-004/D-012/D-023)._
+
 | Offer | Price | Coverage |
 |---|---:|---|
-| CurbSitter Home | $59 monthly or $159 quarterly prepaid by ACH | Up to 3 bins; one regular collection day/week |
-| CurbSitter Complete | $89 monthly or $240 quarterly prepaid by ACH | Up to 6 bins; every regular collection day at the address |
-| Community & Portfolio | Custom proposal | HOA, condo, property manager, and multi-property route pricing/reporting |
-| One-Time Trash Day | $39 | One rollout and return; up to 3 bins; active route/capacity only |
-| Bulk Pickup Coordination | Starting at $49 | Item review, eligible appointment coordination, instructions, and pickup monitoring |
+| CurbSitter Home | $65/month, or $55/month billed quarterly ($165 every 3 months) | Up to 3 bins; one regular collection day/week |
+| CurbSitter Complete | $85/month, or $75/month billed quarterly ($225 every 3 months) | Up to 6 bins; every regular collection day at the address |
+| CurbSitter Enterprise | Custom proposal | HOA, condo, property manager, and multi-property route pricing/reporting |
+| CurbSitter onDemand | $25 per service | One rollout and return; up to 3 bins; active route/capacity only |
 
-Quarterly pricing is the actual prepaid quarterly charge, never a fake monthly equivalent. Public copy may say "Save 10%" as supplied by the owner package. Do not stack another ACH, autopay, or quarterly discount.
+Quarterly billing is a **discounted per-month rate**: the price shown per month is `quarterly_price_cents / 3`, and the customer is charged the full `quarterly_price_cents` once every three months (prepaid, payable by card or ACH). The pricing cards use an accessible **Monthly/Quarterly toggle** that swaps each card's displayed per-month price; the full quarterly charge is always disclosed on the card. Public copy may say "Save up to 15%." Do not stack another autopay or quarterly discount. Bulk Pickup Coordination has been removed (D-007 retired).
 
 ## Included in subscriptions
 
@@ -41,14 +42,13 @@ Quarterly pricing is the actual prepaid quarterly charge, never a fake monthly e
 - Standard prices assume ordinary, safe residential access. Unusual distance, grade, restricted entry, shared bins, or materially greater labor triggers review or custom quote.
 - The minor javelina/wind reset is limited to uprighting a bin, recovering a minor immediate spill, and documenting the correction during an already scheduled visit.
 - Widespread debris, hazards, excessive cleanup, or a separate dispatch is outside standard service.
-- Bulk Pickup Coordination does not promise provider acceptance or collection. Physical item placement is separately quoted and may be unavailable.
 - No waste transport, disposal, junk hauling, hazardous materials, security monitoring, inspection, or full property management.
 
 ## Public presentation
 
-- Homepage: lead with Home and Complete, then Community & Portfolio. Mention the included benefits. Link to `/pricing` for details.
-- `/pricing`: show monthly/quarterly toggle, both subscription cards, Community & Portfolio, included benefits, one-time services, and consolidated guidelines.
-- One-Time Trash Day and Bulk Pickup Coordination stay below the subscription offer.
+- Homepage: lead with Home and Complete, then CurbSitter Enterprise. Mention the included benefits. Link to `/pricing` for details.
+- `/pricing`: show the monthly/quarterly toggle, both subscription cards, CurbSitter Enterprise, included benefits, the CurbSitter onDemand one-time service, and consolidated guidelines.
+- CurbSitter onDemand stays below the subscription offer.
 - Do not publish Home Watch, Host Shield, or other experimental services in the launch navigation or pricing cards.
 
 ## Implementation assets

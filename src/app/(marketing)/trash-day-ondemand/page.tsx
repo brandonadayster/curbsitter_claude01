@@ -4,9 +4,9 @@ import { CheckList, CtaBand, PageHero, Section } from "@/components/site/section
 import { formatCents, ONE_TIME } from "@/config/business";
 
 export const metadata: Metadata = {
-  title: "One-Time Trash Day",
+  title: "CurbSitter onDemand",
   description:
-    "A single scheduled bin rollout and return for $39 — up to 3 bins, photo-confirmed, inside active CurbSitter routes.",
+    "A single scheduled bin rollout and return for $25 — up to 3 bins, photo-confirmed, inside active CurbSitter routes.",
 };
 
 export default function OneTimeTrashDayPage() {
@@ -14,7 +14,7 @@ export default function OneTimeTrashDayPage() {
     <>
       <PageHero
         eyebrow="No subscription required"
-        title={`One-Time Trash Day — ${formatCents(ONE_TIME.trashDayPriceCents)}`}
+        title={`${ONE_TIME.trashDayPublicName} — ${formatCents(ONE_TIME.trashDayPriceCents)} per service`}
       >
         <p>
           Surgery week, a trip, a house between tenants — sometimes you just need one trash day
@@ -35,7 +35,7 @@ export default function OneTimeTrashDayPage() {
 
       <Section title="Availability">
         <p className="text-lg text-muted">
-          One-Time Trash Day is available only inside active route areas and depends on
+          CurbSitter onDemand is available only inside active route areas and depends on
           scheduling capacity — it rides along with our regular routes, which is what keeps the
           price reasonable. Check your address to see whether your street is on an active route
           yet.

@@ -64,7 +64,7 @@ export default async function BillingPage() {
                       <span className="text-base text-muted">
                         {subscription.billing_interval === "monthly"
                           ? "/month"
-                          : "/quarter, prepaid by ACH"}
+                          : "/quarter, prepaid (billed every 3 months)"}
                       </span>
                     </p>
                   </div>

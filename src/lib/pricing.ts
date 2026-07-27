@@ -28,7 +28,7 @@ export function buildQuote(stage3: Stage3): Quote {
     return {
       serviceChoice: "one_time_trash_day",
       billingInterval: null,
-      description: "One-Time Trash Day",
+      description: ONE_TIME.trashDayPublicName,
       amountDueCents: ONE_TIME.trashDayPriceCents,
       recurrence: "one_time",
       requiresAccessReview,
@@ -46,7 +46,7 @@ export function buildQuote(stage3: Stage3): Quote {
     description:
       interval === "monthly"
         ? `${plan.publicName} — monthly`
-        : `${plan.publicName} — quarterly, prepaid by ACH`,
+        : `${plan.publicName} — quarterly, prepaid (billed every 3 months)`,
     amountDueCents: getPlanPriceCents(planId, interval),
     recurrence: interval,
     requiresAccessReview,

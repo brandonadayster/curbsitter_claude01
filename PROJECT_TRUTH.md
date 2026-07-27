@@ -50,7 +50,9 @@ Customers are not buying waste hauling. They are buying reliability, physical sa
 
 ## Locked launch service model
 
-### CurbSitter Home - $59/month or $159/quarter prepaid by ACH
+_Pricing revised 2026-07-27 (D-004/D-012/D-023). Quarterly is a discounted per-month rate shown via the pricing toggle; the customer is charged the full quarterly amount once every three months, payable by card or ACH._
+
+### CurbSitter Home - $65/month or $55/month billed quarterly ($165 every 3 months)
 
 - Up to 3 bins at one residential address.
 - One regular collection day each week.
@@ -58,29 +60,29 @@ Customers are not buying waste hauling. They are buying reliability, physical sa
 - Rollout before collection and return after collection.
 - Photo confirmation every visit, exception alerts, holiday monitoring, HOA timing instructions, dashboard, and service history.
 
-### CurbSitter Complete - $89/month or $240/quarter prepaid by ACH
+### CurbSitter Complete - $85/month or $75/month billed quarterly ($225 every 3 months)
 
 - Up to 6 bins at one residential address.
 - Every regular trash and recycling collection day at the address.
 - All Home service standards and proof.
 - Intended for separate collection days, second homes, vacation rentals, and customers who want every routine collection handled.
 
-### Community & Portfolio - custom proposal
+### CurbSitter Enterprise - custom proposal
 
+- Formerly "Community & Portfolio" (renamed 2026-07-27, D-023).
 - Custom route pricing, centralized controls, and reporting for HOAs, condo associations, property managers, and multi-property accounts.
 - Resident opt-in, selected pilot, or contracted portfolio/community structures.
 
-### One-Time Trash Day - $39
+### CurbSitter onDemand - $25 per service
 
+- Formerly "One-Time Trash Day" (renamed and repriced 2026-07-27, D-004/D-023).
 - One scheduled rollout and post-collection return for up to 3 bins.
 - Active route and scheduling capacity required.
 - Same proof and exception standards as subscriptions.
 
-### Bulk Pickup Coordination - starting at $49
+### Bulk Pickup Coordination - removed (D-007 retired 2026-07-27)
 
-- Review item photos, coordinate an eligible provider appointment, provide placement instructions, and monitor the scheduled pickup.
-- Physical curb placement is separately reviewed and quoted.
-- No transport, disposal, junk hauling, demolition, hazardous-material handling, or guarantee that the provider accepts/collects the items.
+- Bulk Pickup Coordination and physical curb placement are no longer part of the public offer. May be revisited later via a new ADR.
 
 ### Included subscription benefits and boundaries
 
