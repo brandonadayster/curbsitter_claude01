@@ -12,8 +12,11 @@ export default async function AdminMapPage() {
 
   return (
     <>
-      <h1 className="text-3xl font-bold tracking-tight">Map</h1>
-      <p className="mt-2 max-w-2xl text-base text-muted">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Map</h1>
+      {/* Explanatory copy is desktop-only: on mobile the map is the page, and
+          this would push it below the fold. The sheet states the same
+          "internal decision inputs" caveat where the numbers actually are. */}
+      <p className="mt-2 hidden max-w-2xl text-base text-muted sm:block">
         Route cells and properties on one searchable map — filter and toggle layers below. The
         tables carry the same data as the map, so this stays useful even without WebGL.
       </p>

@@ -154,10 +154,22 @@ Mobile is the priority viewport per the owner.
   Notifications/Support stay visible as in-page links rather than hiding behind a "More"
   menu. New `tests/e2e/customer-portal.mobile.spec.ts` (4 tests) — **not executed locally,
   no Supabase stack in this environment; runs in CI.**
-- [ ] PP-12 Mobile bottom-sheet layout for `/admin/map` (map-first, collapsible layer toggle,
-  cards instead of dense grids) per `FRONTEND_GUIDELINES.md` responsive patterns. Now
-  concretely specified by the owner's admin mockup — see
-  `docs/design/dashboard-mockup-review.md`.
+- [x] PP-12 Mobile map-first layout for `/admin/map` (2026-07-31). Below `sm` the map is the
+  page (58svh) with a floating `Layers · N on` control (`map-layer-toggle.tsx`, built on
+  native `<details>`) and a drag-up sheet (`admin-map-sheet.tsx`) holding search, real metric
+  chips, legend, and card lists. From `sm` up the previous stacked layout is byte-for-byte
+  unchanged. Sheet is toggled by a real button with `aria-expanded`, not a drag gesture —
+  gesture-only is unusable by keyboard; collapsed content is `display:none` so it leaves both
+  the tab order and the a11y tree. Chips show only computed values (MRR, cell count, property
+  count); churn and LTV/CAC are deliberately absent until PP-10/PP-13 give them a real source.
+  Layer toggles now also filter the sheet lists, matching desktop. Introduced a
+  `data-testid` convention on the two layout wrappers (a11y-neutral) because both layouts
+  carry the same data and unscoped accessible-name locators match twice; existing
+  `admin-map.spec.ts` rescoped accordingly. New `tests/e2e/admin-map.mobile.spec.ts`
+  (5 tests) — **not executed locally, no Supabase stack in this environment; runs in CI.**
+  Known trade-off: both layouts are in the DOM, so list rows render twice. Fine at pilot
+  scale; if `/admin/map` ever loads thousands of properties, condense or virtualize the
+  mobile list rather than duplicating it.
 - [ ] PP-17 Runner per-stop sync-state list ("photo queued" / "synced" per stop, "N stops
   queued to upload") from the owner's runner mockup. Makes the existing offline queue
   visible; currently a runner can't tell what has actually saved.
