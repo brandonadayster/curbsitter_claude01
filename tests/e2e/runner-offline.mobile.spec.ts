@@ -101,7 +101,14 @@ test("the route list reports queued work instead of looking clean", async ({ pag
   await page.goto(`/runner/tasks/${E2E.mobileTaskId}`);
 
   await page.getByRole("button", { name: /i've arrived/i }).click();
-  await page.context().setOffline(true);
+
+  // Fails only the upload request, not the whole network. There is no
+  // service worker (PP-20), so `page.context().setOffline(true)` would make
+  // the coming `page.goto("/runner")` itself fail with
+  // ERR_INTERNET_DISCONNECTED — that would be asserting capability this app
+  // doesn't have, not testing the queue. Route-level abort reproduces "the
+  // upload can't reach the server" without also taking down navigation.
+  await page.route("**/api/runner/tasks/**/photo", (route) => route.abort("internetdisconnected"));
   await page.setInputFiles('input[type="file"]', {
     name: "proof.jpg",
     mimeType: "image/jpeg",
@@ -109,7 +116,9 @@ test("the route list reports queued work instead of looking clean", async ({ pag
   });
   await expect(page.getByText(/saved on this device, waiting to upload/i)).toBeVisible();
 
-  // Still offline: the route list must not imply everything is uploaded.
+  // The upload is still unreachable: the route list must not imply
+  // everything uploaded. Navigation itself succeeds — only the API call is
+  // blocked — so this exercises the real limitation instead of a bigger one.
   await page.goto("/runner");
   const sync = page.getByRole("region", { name: /sync status/i });
   await expect(sync).toBeVisible();
