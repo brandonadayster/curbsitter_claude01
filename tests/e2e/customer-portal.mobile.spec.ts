@@ -76,7 +76,12 @@ test("portal does not scroll horizontally and the tab bar never covers content",
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
 
   // Scrolled to the bottom, the last in-page content must clear the fixed bar.
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  // `behavior: "instant"` is required: globals.css sets `scroll-behavior:
+  // smooth` on <html>, and the two-argument scrollTo(x, y) form honours it,
+  // so the measurement below would race the scroll animation.
+  await page.evaluate(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+  });
   const support = page.getByRole("navigation", { name: "More" }).getByRole("link", {
     name: "Support",
   });
