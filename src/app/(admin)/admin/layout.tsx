@@ -25,7 +25,7 @@ export default async function AdminLayout({
     <div className="min-h-screen">
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-         <div className="flex min-w-0 items-center gap-6">
+          <div className="flex min-w-0 items-center gap-6">
   <Link href="/admin" className="shrink-0 font-bold">
     Curb<span className="text-cyan">Sitter</span>{" "}
     <span className="text-muted">Ops</span>
