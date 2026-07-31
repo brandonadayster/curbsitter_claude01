@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signIn, signOut } from "./fixtures/auth";
 import { DEV_USERS, E2E } from "./fixtures/ids";
+import { adminClient } from "./fixtures/provision";
 
 /**
  * Offline proof-photo queue (PP-17).
@@ -20,9 +21,36 @@ const JPEG = Buffer.from(
   "base64",
 );
 
+/**
+ * Restore the seeded state of the shared mobile task.
+ *
+ * "I've arrived" is a persistent server-side transition, so without this the
+ * first test leaves the task in `arrived` and every later test — including
+ * runner.mobile.spec.ts, which shares this fixture — finds no arrival button.
+ * Resetting in beforeEach as well as afterEach means isolation does not
+ * depend on file ordering or on a previous run having cleaned up after
+ * itself.
+ */
+async function resetMobileTask(): Promise<void> {
+  const db = adminClient();
+  await db.from("service_photos").delete().eq("task_id", E2E.mobileTaskId);
+  await db.from("task_events").delete().eq("task_id", E2E.mobileTaskId);
+  // Restores the seeded shape exactly. completion_idempotency_key is unique,
+  // so a stale value would block a later completion on this task.
+  await db
+    .from("service_tasks")
+    .update({ status: "assigned", completed_at: null, completion_idempotency_key: null })
+    .eq("id", E2E.mobileTaskId);
+}
+
+test.beforeEach(async () => {
+  await resetMobileTask();
+});
+
 test.afterEach(async ({ page }) => {
   await page.context().setOffline(false);
   await signOut(page);
+  await resetMobileTask();
 });
 
 test("a photo captured with no signal is queued on the device, not lost", async ({ page }) => {
