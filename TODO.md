@@ -170,9 +170,49 @@ Mobile is the priority viewport per the owner.
   Known trade-off: both layouts are in the DOM, so list rows render twice. Fine at pilot
   scale; if `/admin/map` ever loads thousands of properties, condense or virtualize the
   mobile list rather than duplicating it.
-- [ ] PP-17 Runner per-stop sync-state list ("photo queued" / "synced" per stop, "N stops
-  queued to upload") from the owner's runner mockup. Makes the existing offline queue
-  visible; currently a runner can't tell what has actually saved.
+  Also fixed `playwright.config.ts`: the `chromium` project had no `testIgnore`, so it ran
+  every `*.mobile.spec.ts` at desktop width in addition to the `mobile` project. Harmless for
+  the pre-existing `runner.mobile.spec.ts` (that view renders the same at both widths), but
+  the new mobile specs assert `sm:hidden` UI and would have failed under `chromium` for the
+  wrong reason. The `.mobile.spec.ts` suffix now actually selects a viewport.
+- [x] PP-17 Runner offline proof-photo queue and sync state (2026-07-31). **The ticket's
+  premise was wrong and the scope changed:** there was no offline queue to surface. No service
+  worker, no IndexedDB, no `navigator.onLine` anywhere — P4-04 had listed the retry queue as
+  *remaining* work and I misread it as done. Worse, three places already told runners their
+  work was saved when it was not: the transition failure ("Your work is safe"), the photo
+  failure ("The photo stays on your device"), and the server's 503 ("It's saved on your
+  device"). The captured `File` was dropped outright, so a runner in a dead zone believed
+  their proof was queued and would have to re-shoot it.
+  Built the queue those messages already promised: `src/lib/photo-queue.ts` (IndexedDB store,
+  browser-only, plus pure retry-scheduling helpers) and
+  `src/components/runner/use-photo-queue.ts` (a module-level external store read through
+  `useSyncExternalStore`, so the task screen and route list share one snapshot with no custom
+  events). Captures are written to IndexedDB *before* upload is attempted, so an interrupted
+  request still leaves the photo recoverable. Auto-drains on reconnect with capped backoff;
+  manual "Retry now"; queued photos never satisfy the completion gate (the server enforces
+  that independently). New `RouteSyncStatus`/`StopSyncBadge` render only when there is
+  something to report — a permanent "all synced" badge trains runners to ignore the row.
+  Stores only blob + task id + photo type + retry bookkeeping: no addresses, access codes, or
+  signed URLs, per the `TECH_STACK.md` prohibition on persisting those in browser storage.
+  Entries leave only on successful upload or explicit discard — never a silent timer, since
+  auto-evicting a proof photo would reintroduce the same lie quietly.
+  Tests: 5 unit tests for retry scheduling; `tests/e2e/runner-offline.mobile.spec.ts` (4
+  tests) drives the real offline path via Playwright `setOffline`. **e2e not executed locally
+  — no Supabase stack in this environment.**
+- [ ] PP-18 Queue runner *task transitions* offline, not just photos. Completion already has
+  server-side replay protection (`idempotencyKey` + the unique
+  `service_tasks.completion_idempotency_key`), so this is safe in principle — but it means
+  replaying state-machine writes from a device, which `CLAUDE.md` gates behind plan mode.
+  Deliberately excluded from PP-17; the transition error copy now says only that the step
+  wasn't recorded.
+- [ ] PP-19 Photo-upload idempotency. A retry after an ambiguous failure (server committed,
+  response lost) can create a duplicate `service_photos` row, which is customer-visible in
+  service history. Needs an additive migration adding a unique client-supplied upload id —
+  **schema change, plan-mode gated.** Narrow window and low harm, hence not blocking PP-17.
+- [ ] PP-20 Service worker for route/task shell caching, so the runner UI itself loads with no
+  signal. PP-17 makes captured work survive; it does not make the app reachable offline.
+  `TECH_STACK.md` scopes this to "route/task shell, draft task actions, and photo upload
+  retry" and bars caching access codes, billing data, or signed photo URLs.
 - [ ] PP-13 Churn / LTV-CAC KPIs on `/admin/reports` with a chart library (Recharts). Depends
   on PP-10 existing first — the channel-ROI panel in the owner's admin mockup has nothing to
   group by until the attribution column exists. Also includes the mockup's density-by-route

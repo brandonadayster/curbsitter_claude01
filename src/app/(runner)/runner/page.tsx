@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RouteSyncStatus, StopSyncBadge } from "@/components/runner/route-sync-status";
 import { requireRole } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -55,6 +56,10 @@ export default async function RunnerHomePage() {
         </form>
       </div>
 
+      {/* Client component: the queue lives in IndexedDB, so only the browser
+          knows what is actually pending. */}
+      <RouteSyncStatus />
+
       {!tasks || tasks.length === 0 ? (
         <p className="mt-8 rounded-2xl border border-border bg-surface p-6 text-lg text-muted">
           No assigned stops right now. Dispatch will publish your next route.
@@ -94,6 +99,7 @@ export default async function RunnerHomePage() {
                   <p className="mt-1 text-base text-muted">
                     Window: {formatWindow(task.window_start, task.window_end)}
                   </p>
+                  <StopSyncBadge taskId={task.id} />
                 </Link>
               </li>
             );
