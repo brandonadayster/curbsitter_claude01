@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ExpressionSpecification } from "mapbox-gl";
-import { Layer, Marker, Popup, Source } from "react-map-gl/mapbox";
+import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent } from "mapbox-gl";
+import { Layer, Marker, Popup, Source, useMap } from "react-map-gl/mapbox";
 
 import { formatCents } from "@/config/business";
 import type { CellGeometry } from "@/lib/geo";
@@ -44,6 +44,10 @@ export interface AdminOpsMapProps {
 }
 
 const CELLS_FILL_LAYER_ID = "admin-route-cells-fill";
+const PROPERTIES_SOURCE_ID = "admin-properties";
+const PROPERTIES_CLUSTERS_LAYER_ID = "admin-properties-clusters";
+const PROPERTIES_CLUSTER_COUNT_LAYER_ID = "admin-properties-cluster-count";
+const PROPERTIES_UNCLUSTERED_LAYER_ID = "admin-properties-unclustered";
 
 type Selection = { kind: "cell"; id: string } | { kind: "property"; id: string } | null;
 
@@ -54,9 +58,21 @@ type Selection = { kind: "cell"; id: string } | { kind: "property"; id: string }
  * fill color. Always paired with an adjacent accessible table on the
  * consuming page — this component's own `fallback` stays a short pointer to
  * that table rather than a third copy of the same data.
+ *
+ * Properties render through Mapbox GL's native `cluster` source option
+ * rather than one DOM `Marker` per property: at pilot scale a per-property
+ * marker is fine, but it degrades badly past a few hundred properties.
+ * Clustering keeps this on a GPU-composited layer with no added dependency
+ * (deliberately not deck.gl — see docs/adr/0002 — which would add a
+ * dependency and inherit its documented iOS-Safari heatmap float-texture
+ * limitation to solve a problem the native `cluster` option already
+ * handles). A cluster circle intentionally doesn't carry per-status color;
+ * the always-adjacent property table still has exact status for every row,
+ * so no information is lost, only summarized on the map.
  */
 export function AdminOpsMap({ cells, properties, showCells, showProperties, className }: AdminOpsMapProps) {
   const [selection, setSelection] = useState<Selection>(null);
+  const { current: map } = useMap();
 
   const polygonFeatures = useMemo(
     () =>
@@ -77,9 +93,24 @@ export function AdminOpsMap({ cells, properties, showCells, showProperties, clas
     [properties],
   );
 
+  const propertyFeatures = useMemo(
+    () =>
+      locatedProperties.map((pin) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [pin.longitude as number, pin.latitude as number] },
+        properties: { id: pin.id, status: pin.status },
+      })),
+    [locatedProperties],
+  );
+
   const cellColorExpression = useMemo<ExpressionSpecification>(() => {
     const cases = Object.entries(STATE_COLORS).flatMap(([state, color]) => [state, color]);
     return ["match", ["get", "state"], ...cases, STATE_COLORS.research] as ExpressionSpecification;
+  }, []);
+
+  const propertyColorExpression = useMemo<ExpressionSpecification>(() => {
+    const cases = Object.entries(PROPERTY_STATUS_COLORS).flatMap(([status, color]) => [status, color]);
+    return ["match", ["get", "status"], ...cases, PROPERTY_STATUS_COLORS.active] as ExpressionSpecification;
   }, []);
 
   const cellsById = useMemo(() => new Map(cells.map((cell) => [cell.id, cell])), [cells]);
@@ -88,17 +119,52 @@ export function AdminOpsMap({ cells, properties, showCells, showProperties, clas
   const selectedCell = selection?.kind === "cell" ? cellsById.get(selection.id) : undefined;
   const selectedProperty = selection?.kind === "property" ? propertiesById.get(selection.id) : undefined;
 
+  const interactiveLayerIds = [
+    ...(showCells ? [CELLS_FILL_LAYER_ID] : []),
+    ...(showProperties ? [PROPERTIES_CLUSTERS_LAYER_ID, PROPERTIES_UNCLUSTERED_LAYER_ID] : []),
+  ];
+
+  function handleClick(event: MapLayerMouseEvent) {
+    const feature = event.features?.[0];
+    const layerId = feature?.layer?.id;
+
+    if (layerId === PROPERTIES_UNCLUSTERED_LAYER_ID) {
+      const propertyId = feature?.properties?.id as string | undefined;
+      setSelection(propertyId ? { kind: "property", id: propertyId } : null);
+      return;
+    }
+
+    if (layerId === PROPERTIES_CLUSTERS_LAYER_ID) {
+      setSelection(null);
+      const clusterId = feature?.properties?.cluster_id as number | undefined;
+      const source = map?.getSource(PROPERTIES_SOURCE_ID) as GeoJSONSource | undefined;
+      if (clusterId === undefined || !source || feature?.geometry.type !== "Point") return;
+      // Instant re-center/zoom (no flyTo/easeTo animation), consistent with
+      // this map never triggering camera animation elsewhere.
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err || zoom == null || !map) return;
+        const [lng, lat] = feature.geometry.type === "Point" ? feature.geometry.coordinates : [0, 0];
+        map.jumpTo({ center: [lng, lat], zoom });
+      });
+      return;
+    }
+
+    if (layerId === CELLS_FILL_LAYER_ID) {
+      const cellId = feature?.properties?.id as string | undefined;
+      setSelection(cellId ? { kind: "cell", id: cellId } : null);
+      return;
+    }
+
+    setSelection(null);
+  }
+
   return (
     <MapBase
       className={className}
       initialViewState={DEFAULT_MAP_CENTER}
       interactive
-      interactiveLayerIds={showCells ? [CELLS_FILL_LAYER_ID] : []}
-      onClick={(event) => {
-        const feature = event.features?.[0];
-        const cellId = feature?.properties?.id as string | undefined;
-        setSelection(cellId ? { kind: "cell", id: cellId } : null);
-      }}
+      interactiveLayerIds={interactiveLayerIds}
+      onClick={handleClick}
       fallback={
         <div className="rounded-2xl border border-border bg-surface p-6 text-base text-muted">
           Map view unavailable — see the tables below.
@@ -150,30 +216,51 @@ export function AdminOpsMap({ cells, properties, showCells, showProperties, clas
           </Marker>
         ))}
 
-      {showProperties &&
-        locatedProperties.map((pin) => (
-          <Marker
-            key={pin.id}
-            longitude={pin.longitude as number}
-            latitude={pin.latitude as number}
-            anchor="bottom"
-            onClick={(e) => {
-              e.originalEvent.stopPropagation();
-              setSelection({ kind: "property", id: pin.id });
+      {showProperties && propertyFeatures.length > 0 ? (
+        <Source
+          id={PROPERTIES_SOURCE_ID}
+          type="geojson"
+          data={{ type: "FeatureCollection", features: propertyFeatures }}
+          cluster
+          clusterMaxZoom={14}
+          clusterRadius={50}
+        >
+          <Layer
+            id={PROPERTIES_CLUSTERS_LAYER_ID}
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-color": "#12d8f4",
+              "circle-opacity": 0.75,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#0b1020",
+              // Step radius up with cluster size so dense areas read as denser.
+              "circle-radius": ["step", ["get", "point_count"], 14, 25, 18, 100, 24],
             }}
-          >
-            <div
-              title={`${pin.addressLine1} — ${PROPERTY_STATUS_LABELS[pin.status] ?? pin.status}`}
-              style={{
-                width: 10,
-                height: 10,
-                border: "2px solid #0b1020",
-                backgroundColor: PROPERTY_STATUS_COLORS[pin.status] ?? PROPERTY_STATUS_COLORS.active,
-                cursor: "pointer",
-              }}
-            />
-          </Marker>
-        ))}
+          />
+          <Layer
+            id={PROPERTIES_CLUSTER_COUNT_LAYER_ID}
+            type="symbol"
+            filter={["has", "point_count"]}
+            layout={{
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-size": 12,
+            }}
+            paint={{ "text-color": "#0b1020" }}
+          />
+          <Layer
+            id={PROPERTIES_UNCLUSTERED_LAYER_ID}
+            type="circle"
+            filter={["!", ["has", "point_count"]]}
+            paint={{
+              "circle-color": propertyColorExpression,
+              "circle-radius": 6,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#0b1020",
+            }}
+          />
+        </Source>
+      ) : null}
 
       {selectedCell && selectedCell.centerLatitude !== null && selectedCell.centerLongitude !== null ? (
         <Popup

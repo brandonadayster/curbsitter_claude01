@@ -86,6 +86,7 @@ docs/operations/README.md and docs/legal/README.md.
 - [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
   `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
   copy, admin referrals page) to read from config instead, and updated tests/docs.
+  **Reverted by PP-05 (2026-07-31)** — owner restored the original $20/$20 amount.
 - [x] PP-03 Interactive map foundation slice (2026-07-27). Built the "Route-cell status map and
   legend" documented in `FRONTEND_GUIDELINES.md` but never implemented (public `/service-areas`,
   colored/labeled by state only, no counts), plus a customer-dashboard property-pin map on `/app`.
@@ -103,6 +104,50 @@ docs/operations/README.md and docs/legal/README.md.
   accessible tables carry the same filtered data as the map. New `src/lib/admin-map.ts`,
   `src/components/map/admin-map-data.ts`/`admin-ops-map.tsx`/`admin-map-view.tsx`; `MapBase` gained
   optional `interactiveLayerIds`/`onClick` passthrough props (additive, non-breaking).
+- [x] PP-05 Referral credits reverted to Give $20/Get $20 (2026-07-31, D-014 reverted). Owner
+  decided the 2026-07-27 $10/$10 reduction had less pull than the original amount. Reverted
+  `REFERRALS` config (`advocateCreditCents`/`referredCustomerCreditCents` back to 2000/2000),
+  updated the unit test, code comments, and `PROJECT_TRUTH.md`/`DECISION_REGISTER.md`/
+  `BUSINESS_CONFIG.md`. No hardcoded UI amounts existed to fix (PP-02 already routed the two
+  spots that had them through config).
+
+## Business-plan-review follow-ups (2026-07-31)
+
+Tracked from the business-plan-research document review. See
+`docs/adr/0002-business-plan-review-findings.md` for full rationale on each item and on what
+was explicitly rejected (fuzzed/adaptive progress bars, bundled services, premature bundling
+of adjacent services, ValetHero adoption) as conflicting with locked decisions.
+
+- [x] PP-06 Remove unused `h3-js` dependency. Confirmed zero references in `src/`; the locked
+  architecture (D-011, named `route_cells` polygons, not a hex grid) never used it.
+- [x] PP-07 Cluster admin map property pins instead of one DOM marker per property. Replaced
+  per-property `<Marker>` rendering in `admin-ops-map.tsx` with a native Mapbox GL
+  `cluster`/`cluster-count`/unclustered-point layer set on a GeoJSON `Source` — no new
+  dependency, scales to thousands of points, avoids deck.gl's documented iOS-Safari
+  float-texture heatmap caveat.
+- [x] PP-08 Migrate address geocoding off the deprecated Mapbox Geocoding v5 endpoint
+  (`src/lib/eligibility.ts`) to the current Search Box/Geocoding v6 API.
+- [ ] PP-09 Hauler × collection-day matrix in eligibility. `route_cells.collection_days` exists
+  but is read nowhere; `collection_schedules` is only consulted at cycle generation, after
+  signup. Needs schema (haulers table or equivalent) — **schema migration, requires plan mode
+  and owner review before implementation** per `.claude/rules/database.md` and `CLAUDE.md`.
+- [ ] PP-10 Channel/campaign attribution column on `eligibility_checks`/`waitlist_leads` so
+  door-hanger/QR/PPC ROI is measurable. **Schema migration — same plan-mode gate as PP-09.**
+- [ ] PP-11 Ingest Yavapai County subdivision polygons (ArcGIS `Parcels` layer / Yavapai Open
+  Data portal) into `route_cells.geometry` so maps render real boundaries instead of admin-set
+  center points. Real business-critical geodata affecting live eligibility — **plan mode and
+  owner review before ingesting/activating any boundary**, per `.claude/rules/database.md`
+  ("never edit production manually through an agent") and the route-cell activation rule in
+  `PROJECT_TRUTH.md`.
+- [ ] PP-12 Mobile bottom-sheet layout for `/admin/map` (map-first, collapsible layer toggle,
+  cards instead of dense grids) per `FRONTEND_GUIDELINES.md` responsive patterns.
+- [ ] PP-13 Churn / LTV-CAC KPIs on `/admin/reports` with a chart library (Recharts). Depends
+  on PP-10 existing first.
+- [ ] PP-14 Self-serve reschedule and per-visit skip in the customer portal (the only real gaps
+  against the document's customer-dashboard checklist).
+- [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
+  processes (dev servers, watch tasks, agents) not currently needed, to conserve resources.
+  Standing practice per owner request 2026-07-31, not a one-time item.
 
 ## Current ticket
 

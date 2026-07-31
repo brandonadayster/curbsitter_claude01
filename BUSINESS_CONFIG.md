@@ -74,10 +74,11 @@ service_windows:
   return_target: "after_confirmed_collection_same_day"
   return_fallback: "published_next_day_window"
 
-# Revised 2026-07-27 (D-014): was 2000/2000 ($20/$20).
+# Reverted 2026-07-31 (D-014): back to 2000/2000 ($20/$20); was 1000/1000
+# ($10/$10) from 2026-07-27 to 2026-07-31 — the lower amount had less pull.
 referrals:
-  advocate_credit_cents: 1000
-  referred_customer_credit_cents: 1000
+  advocate_credit_cents: 2000
+  referred_customer_credit_cents: 2000
   qualifying_event: "first_paid_collection_cycle_completed"
   monthly_credit_cap_cents: "no cap"
 
