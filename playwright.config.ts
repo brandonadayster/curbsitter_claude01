@@ -23,8 +23,14 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    {
+     {
       name: "chromium",
+      // `*.mobile.spec.ts` belongs to the mobile project only. Without this
+      // the desktop project also picks those files up, and specs asserting
+      // mobile-only UI (the portal tab bar, the admin map sheet — both
+      // `sm:hidden`) fail at desktop width for the right reason and the
+      // wrong test. The naming convention now actually selects a viewport.
+      testIgnore: /.*\.mobile\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
