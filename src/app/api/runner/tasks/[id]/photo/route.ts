@@ -85,7 +85,10 @@ export async function POST(
     return NextResponse.json({ photoId: photo.id });
   } catch (error) {
     console.error("photo upload failed:", error instanceof Error ? error.message : error);
-    return apiError(503, "upload_failed", "The photo didn't upload. It's saved on your device — try again.", {
+    // The client queues the blob in IndexedDB before calling this endpoint, so
+    // "saved on your device" is now true — but the server can't verify that,
+    // so it states only what it knows and lets the client describe the queue.
+    return apiError(503, "upload_failed", "The photo didn't reach us. It will retry.", {
       retryable: true,
     });
   }

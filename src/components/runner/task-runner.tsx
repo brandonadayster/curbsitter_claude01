@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { usePhotoQueue } from "./use-photo-queue";
+
 interface TaskView {
   id: string;
   taskType: string;
@@ -46,9 +48,14 @@ export function TaskRunner({ task }: { task: TaskView }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
+  const queue = usePhotoQueue();
 
   const proofType = task.taskType === "rollout" ? "rollout_proof" : "return_proof";
   const requiresProof = task.taskType === "rollout" || task.taskType === "return";
+  const queuedForTask = queue.pending.filter((item) => item.taskId === task.id);
+  // A queued photo is real proof — it is on the device and will upload — but
+  // it is not yet on the server, so it must not satisfy the completion gate.
+  // The server enforces that independently; this only keeps the button honest.
   const hasProof = photos.some((photo) => photo.type === proofType);
   const terminal = status === "completed" || status === "cancelled" || status === "exception";
 
@@ -75,7 +82,10 @@ export function TaskRunner({ task }: { task: TaskView }) {
       setStatus(data.status ?? to);
       return true;
     } catch {
-      setError("No connection. Your work is safe — try again when signal returns.");
+      // Transitions are not queued (that would mean replaying task state
+      // machine writes offline — see PP-18). Say only what is true: nothing
+      // was recorded, so the tap has to happen again.
+      setError("No connection. This step wasn't recorded yet — try again when signal returns.");
       return false;
     } finally {
       setPending(false);
@@ -86,21 +96,20 @@ export function TaskRunner({ task }: { task: TaskView }) {
     setUploading(true);
     setError("");
     try {
-      const form = new FormData();
-      form.set("photoType", proofType);
-      form.set("file", file);
-      const response = await fetch(`/api/runner/tasks/${task.id}/photo`, {
-        method: "POST",
-        body: form,
-      });
-      const data = (await response.json()) as { photoId?: string; error?: { message?: string } };
-      if (!response.ok || !data.photoId) {
-        setError(data.error?.message ?? "The photo didn't upload. Try again.");
-        return;
+      // Persisted to the device queue first, then uploaded. If this fails the
+      // photo is genuinely still on the device, which is what the queued
+      // state below tells the runner.
+      const photoId = await queue.capture(task.id, proofType, file);
+      if (photoId) {
+        setPhotos((current) => [...current, { id: photoId, type: proofType }]);
+        router.refresh();
       }
-      setPhotos((current) => [...current, { id: data.photoId!, type: proofType }]);
-    } catch {
-      setError("No connection. The photo stays on your device — try again when signal returns.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "The photo didn't upload and couldn't be saved on this device. Take it again.",
+      );
     } finally {
       setUploading(false);
     }
@@ -247,6 +256,29 @@ export function TaskRunner({ task }: { task: TaskView }) {
               >
                 {uploading ? "Uploading…" : hasProof ? "Add another photo" : "Take proof photo"}
               </button>
+              {queuedForTask.length > 0 ? (
+                <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3">
+                  <p className="text-lg font-medium text-warning">
+                    {queuedForTask.length === 1
+                      ? "1 photo saved on this device, waiting to upload"
+                      : `${queuedForTask.length} photos saved on this device, waiting to upload`}
+                  </p>
+                  <p className="mt-1 text-base">
+                    {queue.online
+                      ? "Uploading when the connection allows."
+                      : "No signal — it will upload automatically when signal returns."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={queue.busy || !queue.online}
+                    onClick={() => void queue.retryNow()}
+                    className="mt-3 min-h-[44px] rounded-lg border border-border px-4 py-2 text-base font-semibold disabled:opacity-60"
+                  >
+                    {queue.busy ? "Uploading…" : "Retry now"}
+                  </button>
+                </div>
+              ) : null}
+
               {hasProof ? (
                 <p className="text-lg text-success">✓ Proof photo uploaded</p>
               ) : requiresProof ? (
