@@ -118,6 +118,12 @@ Tracked from the business-plan-research document review. See
 was explicitly rejected (fuzzed/adaptive progress bars, bundled services, premature bundling
 of adjacent services, ValetHero adoption) as conflicting with locked decisions.
 
+Owner-supplied dashboard mockups (2026-07-31) are reviewed in
+`docs/design/dashboard-mockup-review.md` — adoptable patterns, and the conflicts not to build
+as drawn (mockup pricing is the research document's $40/mo-era numbers, not locked D-004
+pricing; "Street captain · top 10%" ranking; inline gate codes on the runner route list).
+Mobile is the priority viewport per the owner.
+
 - [x] PP-06 Remove unused `h3-js` dependency. Confirmed zero references in `src/`; the locked
   architecture (D-011, named `route_cells` polygons, not a hex grid) never used it.
 - [x] PP-07 Cluster admin map property pins instead of one DOM marker per property. Replaced
@@ -139,10 +145,27 @@ of adjacent services, ValetHero adoption) as conflicting with locked decisions.
   owner review before ingesting/activating any boundary**, per `.claude/rules/database.md`
   ("never edit production manually through an agent") and the route-cell activation rule in
   `PROJECT_TRUTH.md`.
+- [x] PP-16 Customer portal mobile bottom tab bar (2026-07-31). The portal nav was six text
+  links in a horizontally-scrolling header row — sideways scrolling to reach later items and
+  hit areas below the 44x44px rule the project already commits to. Added a mobile-only
+  bottom tab bar (`src/components/site/portal-tab-bar.tsx`) with four permanent
+  icon-plus-label targets at 56px, `aria-current` for the active tab, active state not
+  carried by color alone, and safe-area inset padding. Header nav now `sm:`-and-up only;
+  Notifications/Support stay visible as in-page links rather than hiding behind a "More"
+  menu. New `tests/e2e/customer-portal.mobile.spec.ts` (4 tests) — **not executed locally,
+  no Supabase stack in this environment; runs in CI.**
 - [ ] PP-12 Mobile bottom-sheet layout for `/admin/map` (map-first, collapsible layer toggle,
-  cards instead of dense grids) per `FRONTEND_GUIDELINES.md` responsive patterns.
+  cards instead of dense grids) per `FRONTEND_GUIDELINES.md` responsive patterns. Now
+  concretely specified by the owner's admin mockup — see
+  `docs/design/dashboard-mockup-review.md`.
+- [ ] PP-17 Runner per-stop sync-state list ("photo queued" / "synced" per stop, "N stops
+  queued to upload") from the owner's runner mockup. Makes the existing offline queue
+  visible; currently a runner can't tell what has actually saved.
 - [ ] PP-13 Churn / LTV-CAC KPIs on `/admin/reports` with a chart library (Recharts). Depends
-  on PP-10 existing first.
+  on PP-10 existing first — the channel-ROI panel in the owner's admin mockup has nothing to
+  group by until the attribution column exists. Also includes the mockup's density-by-route
+  chart with a dashed breakeven line (renders the `PROJECT_TRUTH.md` route-density rule as a
+  glanceable pass/fail).
 - [ ] PP-14 Self-serve reschedule and per-visit skip in the customer portal (the only real gaps
   against the document's customer-dashboard checklist).
 - [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
