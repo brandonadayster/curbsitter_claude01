@@ -86,6 +86,7 @@ docs/operations/README.md and docs/legal/README.md.
 - [x] PP-02 Referral credits lowered to Give $10/Get $10 (2026-07-27, D-014 revised). Updated
   `REFERRALS` config, fixed two pre-existing hardcoded-`$20`/magic-number spots (public address-check
   copy, admin referrals page) to read from config instead, and updated tests/docs.
+  **Reverted by PP-05 (2026-07-31)** — owner restored the original $20/$20 amount.
 - [x] PP-03 Interactive map foundation slice (2026-07-27). Built the "Route-cell status map and
   legend" documented in `FRONTEND_GUIDELINES.md` but never implemented (public `/service-areas`,
   colored/labeled by state only, no counts), plus a customer-dashboard property-pin map on `/app`.
@@ -103,6 +104,85 @@ docs/operations/README.md and docs/legal/README.md.
   accessible tables carry the same filtered data as the map. New `src/lib/admin-map.ts`,
   `src/components/map/admin-map-data.ts`/`admin-ops-map.tsx`/`admin-map-view.tsx`; `MapBase` gained
   optional `interactiveLayerIds`/`onClick` passthrough props (additive, non-breaking).
+- [x] PP-05 Referral credits reverted to Give $20/Get $20 (2026-07-31, D-014 reverted). Owner
+  decided the 2026-07-27 $10/$10 reduction had less pull than the original amount. Reverted
+  `REFERRALS` config (`advocateCreditCents`/`referredCustomerCreditCents` back to 2000/2000),
+  updated the unit test, code comments, and `PROJECT_TRUTH.md`/`DECISION_REGISTER.md`/
+  `BUSINESS_CONFIG.md`. No hardcoded UI amounts existed to fix (PP-02 already routed the two
+  spots that had them through config).
+
+## Business-plan-review follow-ups (2026-07-31)
+
+Tracked from the business-plan-research document review. See
+`docs/adr/0002-business-plan-review-findings.md` for full rationale on each item and on what
+was explicitly rejected (fuzzed/adaptive progress bars, bundled services, premature bundling
+of adjacent services, ValetHero adoption) as conflicting with locked decisions.
+
+Owner-supplied dashboard mockups (2026-07-31) are reviewed in
+`docs/design/dashboard-mockup-review.md` — adoptable patterns, and the conflicts not to build
+as drawn (mockup pricing is the research document's $40/mo-era numbers, not locked D-004
+pricing; "Street captain · top 10%" ranking; inline gate codes on the runner route list).
+Mobile is the priority viewport per the owner.
+
+- [x] PP-06 Remove unused `h3-js` dependency. Confirmed zero references in `src/`; the locked
+  architecture (D-011, named `route_cells` polygons, not a hex grid) never used it.
+- [x] PP-07 Cluster admin map property pins instead of one DOM marker per property. Replaced
+  per-property `<Marker>` rendering in `admin-ops-map.tsx` with a native Mapbox GL
+  `cluster`/`cluster-count`/unclustered-point layer set on a GeoJSON `Source` — no new
+  dependency, scales to thousands of points, avoids deck.gl's documented iOS-Safari
+  float-texture heatmap caveat.
+- [x] PP-08 Migrate address geocoding off the deprecated Mapbox Geocoding v5 endpoint
+  (`src/lib/eligibility.ts`) to the current Search Box/Geocoding v6 API.
+- [ ] PP-09 Hauler × collection-day matrix in eligibility. `route_cells.collection_days` exists
+  but is read nowhere; `collection_schedules` is only consulted at cycle generation, after
+  signup. Needs schema (haulers table or equivalent) — **schema migration, requires plan mode
+  and owner review before implementation** per `.claude/rules/database.md` and `CLAUDE.md`.
+- [ ] PP-10 Channel/campaign attribution column on `eligibility_checks`/`waitlist_leads` so
+  door-hanger/QR/PPC ROI is measurable. **Schema migration — same plan-mode gate as PP-09.**
+- [ ] PP-11 Ingest Yavapai County subdivision polygons (ArcGIS `Parcels` layer / Yavapai Open
+  Data portal) into `route_cells.geometry` so maps render real boundaries instead of admin-set
+  center points. Real business-critical geodata affecting live eligibility — **plan mode and
+  owner review before ingesting/activating any boundary**, per `.claude/rules/database.md`
+  ("never edit production manually through an agent") and the route-cell activation rule in
+  `PROJECT_TRUTH.md`.
+- [x] PP-16 Customer portal mobile bottom tab bar (2026-07-31). The portal nav was six text
+  links in a horizontally-scrolling header row — sideways scrolling to reach later items and
+  hit areas below the 44x44px rule the project already commits to. Added a mobile-only
+  bottom tab bar (`src/components/site/portal-tab-bar.tsx`) with four permanent
+  icon-plus-label targets at 56px, `aria-current` for the active tab, active state not
+  carried by color alone, and safe-area inset padding. Header nav now `sm:`-and-up only;
+  Notifications/Support stay visible as in-page links rather than hiding behind a "More"
+  menu. New `tests/e2e/customer-portal.mobile.spec.ts` (4 tests) — **not executed locally,
+  no Supabase stack in this environment; runs in CI.**
+- [x] PP-12 Mobile map-first layout for `/admin/map` (2026-07-31). Below `sm` the map is the
+  page (58svh) with a floating `Layers · N on` control (`map-layer-toggle.tsx`, built on
+  native `<details>`) and a drag-up sheet (`admin-map-sheet.tsx`) holding search, real metric
+  chips, legend, and card lists. From `sm` up the previous stacked layout is byte-for-byte
+  unchanged. Sheet is toggled by a real button with `aria-expanded`, not a drag gesture —
+  gesture-only is unusable by keyboard; collapsed content is `display:none` so it leaves both
+  the tab order and the a11y tree. Chips show only computed values (MRR, cell count, property
+  count); churn and LTV/CAC are deliberately absent until PP-10/PP-13 give them a real source.
+  Layer toggles now also filter the sheet lists, matching desktop. Introduced a
+  `data-testid` convention on the two layout wrappers (a11y-neutral) because both layouts
+  carry the same data and unscoped accessible-name locators match twice; existing
+  `admin-map.spec.ts` rescoped accordingly. New `tests/e2e/admin-map.mobile.spec.ts`
+  (5 tests) — **not executed locally, no Supabase stack in this environment; runs in CI.**
+  Known trade-off: both layouts are in the DOM, so list rows render twice. Fine at pilot
+  scale; if `/admin/map` ever loads thousands of properties, condense or virtualize the
+  mobile list rather than duplicating it.
+- [ ] PP-17 Runner per-stop sync-state list ("photo queued" / "synced" per stop, "N stops
+  queued to upload") from the owner's runner mockup. Makes the existing offline queue
+  visible; currently a runner can't tell what has actually saved.
+- [ ] PP-13 Churn / LTV-CAC KPIs on `/admin/reports` with a chart library (Recharts). Depends
+  on PP-10 existing first — the channel-ROI panel in the owner's admin mockup has nothing to
+  group by until the attribution column exists. Also includes the mockup's density-by-route
+  chart with a dashed breakeven line (renders the `PROJECT_TRUTH.md` route-density rule as a
+  glanceable pass/fail).
+- [ ] PP-14 Self-serve reschedule and per-visit skip in the customer portal (the only real gaps
+  against the document's customer-dashboard checklist).
+- [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
+  processes (dev servers, watch tasks, agents) not currently needed, to conserve resources.
+  Standing practice per owner request 2026-07-31, not a one-time item.
 
 ## Current ticket
 

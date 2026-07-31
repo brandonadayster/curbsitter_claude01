@@ -15,7 +15,7 @@
 | D-011 | Manual/assisted routing first; custom optimization later. | Locked | Do not build a math project before validating route economics. | Triggered by scale thresholds. |
 | D-012 | Stripe Billing and Customer Portal handle recurring payments; quarterly plans are prepaid and renew every three months, payable by card or ACH, and are displayed as a discounted per-month rate via the pricing toggle. | Locked (revised 2026-07-27) | Reduces custom billing risk while preserving the approved quarterly offer; allowing card lowers signup friction. | Architecture ADR. |
 | D-013 | Email is default; SMS is opt-in and transactional unless separate marketing consent exists. | Locked | Compliance and customer trust. | Legal review. |
-| D-014 | Referrals are Give $10/Get $10 (revised 2026-07-27, was Give $20/Get $20) after a qualifying completed paid service, with anti-fraud controls. | Locked | High growth potential without paying for empty leads; owner lowered the credit amount alongside the pricing pivot. | Owner confirms caps/expiration. |
+| D-014 | Referrals are Give $20/Get $20 (reverted 2026-07-31, back to the original amount; was Give $10/Get $10 from 2026-07-27 to 2026-07-31) after a qualifying completed paid service, with anti-fraud controls. | Locked (reverted 2026-07-31) | High growth potential without paying for empty leads; owner reverted the 2026-07-27 reduction because $10/$10 had less pull than the original amount. | Owner confirms caps/expiration. |
 | D-015 | Do not publish fake reviews, route counts, availability, social proof, or AI-created customer quotes. | Locked | Trust is the moat. | Never override. |
 | D-016 | Deep onyx design remains, but legibility and restraint outrank glow effects. | Locked | Target audience includes older adults. | Design review. |
 | D-017 | Pricing and operational rules are configuration-driven, not hardcoded in pages. | Locked | Prevents contradictory versions. | Never override. |
@@ -32,7 +32,7 @@
 - Bulk Pickup Coordination and physical curb placement as a public service (see D-007 retired 2026-07-27).
 - Quarterly displayed only as the literal quarterly charge with no per-month equivalent (revised by D-023).
 - Quarterly plans payable by ACH only (now card or ACH, D-012 revision 2026-07-27).
-- Give $20/Get $20 referral credits; superseded by D-014 revision 2026-07-27 (Give $10/Get $10).
+- Give $10/Get $10 referral credits (2026-07-27 to 2026-07-31); reverted to the original Give $20/Get $20 by D-014 revision 2026-07-31 — the lower amount had less pull.
 - Scoop2Go and BleepSweep branding.
 - Dual trash-plus-residential-pet-waste business.
 - Home $59 / Plus $69 with 2-bin and 4-bin limits.

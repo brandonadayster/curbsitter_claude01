@@ -17,7 +17,6 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.1",
     "framer-motion": "^12.42.2",
-    "h3-js": "^4.5.0",
     "lucide-react": "^1.24.0",
     "mapbox-gl": "^3.26.0",
     "next": "16.2.10",

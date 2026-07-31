@@ -52,10 +52,10 @@ describe("pricing (Decision D-004, revised 2026-07-27)", () => {
   });
 });
 
-describe("referral rules (Decision D-014, revised 2026-07-27)", () => {
-  it("is Give $10 / Get $10 after a qualifying completed paid cycle", () => {
-    expect(REFERRALS.advocateCreditCents).toBe(1000);
-    expect(REFERRALS.referredCustomerCreditCents).toBe(1000);
+describe("referral rules (Decision D-014, reverted 2026-07-31)", () => {
+  it("is Give $20 / Get $20 after a qualifying completed paid cycle", () => {
+    expect(REFERRALS.advocateCreditCents).toBe(2000);
+    expect(REFERRALS.referredCustomerCreditCents).toBe(2000);
     expect(REFERRALS.qualifyingEvent).toBe("first_paid_collection_cycle_completed");
   });
 });

@@ -144,7 +144,7 @@ Route activation is based on estimated contribution and capacity, not a magical 
 
 ## Referral and waitlist rules
 
-- Core offer: Give $10, Get $10 (revised 2026-07-27, was Give $20/Get $20) after a referred customer completes the qualifying event defined in configuration.
+- Core offer: Give $20, Get $20 (reverted 2026-07-31, back to the original amount; was Give $10/Get $10 from 2026-07-27 to 2026-07-31) after a referred customer completes the qualifying event defined in configuration.
 - Credits are not cash, are not transferable, and need fraud controls and a billing-cycle cap.
 - Waitlisted leads receive a personal sharing link and route-progress updates.
 - Never promise a route will open "tomorrow" solely because a referral count was reached.

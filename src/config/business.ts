@@ -90,8 +90,10 @@ export const SERVICE_WINDOWS = {
 } as const;
 
 export const REFERRALS = {
-  advocateCreditCents: 1000,
-  referredCustomerCreditCents: 1000,
+  // Reverted 2026-07-31 (D-014) to Give $20/Get $20 — the 2026-07-27 $10/$10
+  // reduction had less pull than the original amount. Was 1000/1000.
+  advocateCreditCents: 2000,
+  referredCustomerCreditCents: 2000,
   qualifyingEvent: "first_paid_collection_cycle_completed",
   // confirmed 2026-07-23: no monthly cap. `null` = uncapped; the admin approval
   // path only enforces a ceiling when this is non-null.
