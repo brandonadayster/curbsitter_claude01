@@ -1,0 +1,27 @@
+name: Sync City Route Days
+
+on:
+  schedule:
+    # Monthly — the City's route-day boundaries are a slow-changing dataset
+    # (16 polygons total); this cadence plus the manual workflow_dispatch
+    # trigger below covers D-025's "not queried live per signup" requirement.
+    - cron: "0 9 1 * *" # 1st of the month, 09:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run sync:city-route-days
+        env:
+          # Production Supabase project — distinct from ci.yml's e2e job,
+          # which uses well-known local-demo keys. These must be configured
+          # as real repo/environment secrets before this workflow can run.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

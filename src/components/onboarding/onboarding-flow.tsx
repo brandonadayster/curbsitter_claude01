@@ -94,6 +94,17 @@ const STAGE_TITLES = [
 
 type ServiceChoice = "home" | "complete" | "one_time_trash_day";
 
+/**
+ * D-025 collection-day check state. `mismatch` holds the flow on the
+ * trash-day question until the customer picks a resolution; `geocode_failed`
+ * blocks entirely (no address to verify against). `no_zone_data` — the
+ * property isn't on City service, most likely a private hauler — is the
+ * common, unremarkable case and advances silently.
+ */
+type DayCheckState = "idle" | "checking" | "match" | "mismatch" | "no_zone_data" | "geocode_failed";
+
+type ProviderKind = "city" | "private" | "unsure";
+
 type Step3 =
   | "plan"
   | "billing"
@@ -125,10 +136,14 @@ function buildStage3Steps(a: {
   steps.push("hasBoth");
   steps.push("trashCount");
   if (a.hasBothBinTypes) steps.push("recyclingCount");
+  // Provider comes before the day questions: knowing the hauler up front
+  // lets a private-hauler property skip the City cross-check entirely
+  // rather than be shown a conflict about a hauler that isn't theirs.
+  steps.push("provider");
   steps.push("trashDay");
   if (a.hasBothBinTypes) steps.push("sameDay");
   if (a.hasBothBinTypes && a.sameDayCollection === false) steps.push("recyclingDay");
-  steps.push("provider", "hazards", "storage", "curbNotes");
+  steps.push("hazards", "storage", "curbNotes");
   if (a.hazards.includes("gate") || a.hazards.includes("garage")) steps.push("access");
   return steps;
 }
@@ -274,6 +289,7 @@ export function OnboardingFlow({
   const [hasBothBinTypes, setHasBothBinTypes] = useState<boolean | null>(null);
   const [trashBinCount, setTrashBinCount] = useState(1);
   const [recyclingBinCount, setRecyclingBinCount] = useState(0);
+  const [collectionProviderKind, setCollectionProviderKind] = useState<ProviderKind | null>(null);
   const [collectionProvider, setCollectionProvider] = useState("");
   const [collectionDay, setCollectionDay] = useState<number | null>(null);
   const [collectionDayUnsure, setCollectionDayUnsure] = useState(false);
@@ -284,6 +300,9 @@ export function OnboardingFlow({
   const [curbPlacementNotes, setCurbPlacementNotes] = useState("");
   const [hazards, setHazards] = useState<string[]>([]);
   const [accessSecretNotes, setAccessSecretNotes] = useState("");
+  // D-025: City-of-Prescott collection-day cross-check.
+  const [dayCheck, setDayCheck] = useState<DayCheckState>("idle");
+  const [cityWeekday, setCityWeekday] = useState<number | null>(null);
 
   // Stage 4
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -354,6 +373,63 @@ export function OnboardingFlow({
       return;
     }
     setStage3Step(steps3[index - 1]);
+  }
+
+  /**
+   * D-025: cross-check the picked trash day against the City's cached route
+   * zones. Only a real conflict holds the flow — a property outside the
+   * City's zones (private hauler) or an unreachable check advances the same
+   * as before, since neither means the customer answered wrong.
+   */
+  async function runDayCheck(weekday: number) {
+    // A private hauler sets its own schedule, which the City's route data
+    // says nothing about — checking would only produce a conflict about a
+    // hauler that isn't theirs.
+    if (!token || collectionProviderKind === "private") {
+      advance("trashDay");
+      return;
+    }
+    setDayCheck("checking");
+    try {
+      const response = await fetch(`/api/onboarding/draft/${token}/collection-day-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekday }),
+      });
+      if (!response.ok) {
+        setDayCheck("idle");
+        advance("trashDay");
+        return;
+      }
+      const data = (await response.json()) as { outcome: DayCheckState; cityWeekday: number | null };
+      setCityWeekday(data.cityWeekday);
+      setDayCheck(data.outcome);
+      if (data.outcome === "mismatch" || data.outcome === "geocode_failed") return;
+      advance("trashDay");
+    } catch {
+      // Verification is an enhancement, not a gate — a failed call must
+      // never strand a paying customer mid-signup.
+      setDayCheck("idle");
+      advance("trashDay");
+    }
+  }
+
+  /** "No, it's my day" — record the override, then continue. */
+  async function confirmDayMismatch() {
+    if (token) {
+      try {
+        await fetch(`/api/onboarding/draft/${token}/collection-day-check`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmed: true }),
+        });
+      } catch {
+        // Best-effort: the draft keeps the unresolved `mismatch`, which
+        // finalize already treats as needing review.
+      }
+    }
+    setDayCheck("idle");
+    advance("trashDay");
   }
 
   async function submitStage1(event: React.FormEvent) {
@@ -445,6 +521,7 @@ export function OnboardingFlow({
       hasBothBinTypes: hasBothBinTypes ?? false,
       trashBinCount,
       recyclingBinCount: hasBothBinTypes ? recyclingBinCount : 0,
+      collectionProviderKind,
       collectionProvider,
       collectionDay: collectionDayUnsure ? null : collectionDay,
       collectionDayUnsure,
@@ -818,24 +895,94 @@ export function OnboardingFlow({
                 <p className="mt-1 text-base text-muted">
                   We roll your bins out the evening before and bring them back after collection.
                 </p>
-                <div className="mt-4">
-                  <DayPicker
-                    day={collectionDay}
-                    unsure={collectionDayUnsure}
-                    onPick={(value) => {
-                      setCollectionDay(value);
-                      setCollectionDayUnsure(false);
-                      advance("trashDay");
-                    }}
-                    onUnsure={() => {
-                      setCollectionDayUnsure(true);
-                      setCollectionDay(null);
-                      advance("trashDay");
-                    }}
-                  />
-                </div>
-                <Err message={fieldErrors.collectionDay} />
-                {stepNav}
+
+                {dayCheck === "geocode_failed" ? (
+                  <div
+                    aria-live="polite"
+                    className="mt-4 rounded-2xl border border-border bg-surface p-6 sm:p-8"
+                  >
+                    <h3 className="text-xl font-bold">We couldn&apos;t locate that address</h3>
+                    <p className="mt-3 text-lg text-muted">
+                      We weren&apos;t able to match your address to a map location, so we can&apos;t
+                      confirm your collection day yet. Get in touch and we&apos;ll sort it out with
+                      you directly — it usually takes a minute.
+                    </p>
+                    <a
+                      href="/contact"
+                      className="mt-6 inline-block min-h-[44px] rounded-lg bg-cyan px-6 py-3 text-lg font-semibold text-bg hover:bg-cyan-strong"
+                    >
+                      Contact us
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDayCheck("idle");
+                        setStage(1);
+                      }}
+                      className="mt-4 block text-base text-muted underline hover:text-text"
+                    >
+                      Check a different address
+                    </button>
+                  </div>
+                ) : dayCheck === "mismatch" && cityWeekday !== null ? (
+                  <div
+                    aria-live="polite"
+                    className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 p-6"
+                  >
+                    <h3 className="text-xl font-bold">
+                      The City lists a different day for your address
+                    </h3>
+                    <p className="mt-2 text-lg">
+                      City of Prescott records show <strong>{WEEKDAYS[cityWeekday]}</strong> as the
+                      collection day here, not {collectionDay !== null ? WEEKDAYS[collectionDay] : ""}.
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <Choice
+                        onClick={() => {
+                          setCollectionDay(cityWeekday);
+                          setCollectionDayUnsure(false);
+                          void runDayCheck(cityWeekday);
+                        }}
+                      >
+                        Use {WEEKDAYS[cityWeekday]}
+                      </Choice>
+                      <Choice onClick={() => void confirmDayMismatch()}>
+                        No, it&apos;s {collectionDay !== null ? WEEKDAYS[collectionDay] : "my day"}
+                      </Choice>
+                    </div>
+                    <p className="mt-3 text-base text-muted">
+                      If your street is on a private hauler rather than City service, your own answer
+                      is probably right — we&apos;ll double-check before your first pickup.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-4">
+                      <DayPicker
+                        day={collectionDay}
+                        unsure={collectionDayUnsure}
+                        onPick={(value) => {
+                          setCollectionDay(value);
+                          setCollectionDayUnsure(false);
+                          void runDayCheck(value);
+                        }}
+                        onUnsure={() => {
+                          setCollectionDayUnsure(true);
+                          setCollectionDay(null);
+                          setDayCheck("idle");
+                          advance("trashDay");
+                        }}
+                      />
+                    </div>
+                    {dayCheck === "checking" ? (
+                      <p aria-live="polite" className="mt-3 text-base text-muted">
+                        Checking your collection day…
+                      </p>
+                    ) : null}
+                    <Err message={fieldErrors.collectionDay} />
+                    {stepNav}
+                  </>
+                )}
               </section>
             ) : null}
 
@@ -904,11 +1051,59 @@ export function OnboardingFlow({
             {stage3Step === "provider" ? (
               <section className="mt-4">
                 <h2 className="text-xl font-bold">Who collects your trash?</h2>
-                <label htmlFor="ob-provider" className="mt-1 block text-base text-muted">
-                  Optional — it helps us match your street&apos;s schedule.
-                </label>
-                <input id="ob-provider" className={`${inputClasses} mt-3`} placeholder="e.g., City of Prescott, Patriot Disposal" value={collectionProvider} onChange={(e) => setCollectionProvider(e.target.value)} />
-                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("provider")} />
+                <p className="mt-1 text-base text-muted">
+                  This tells us whose pickup schedule your street runs on.
+                </p>
+                <div className="mt-4 grid gap-3">
+                  <Choice
+                    selected={collectionProviderKind === "city"}
+                    onClick={() => {
+                      setCollectionProviderKind("city");
+                      setCollectionProvider("City of Prescott");
+                      advance("provider");
+                    }}
+                  >
+                    City of Prescott
+                  </Choice>
+                  <Choice
+                    selected={collectionProviderKind === "private"}
+                    onClick={() => {
+                      setCollectionProviderKind("private");
+                      setCollectionProvider("");
+                    }}
+                  >
+                    A private hauler
+                  </Choice>
+                  <Choice
+                    selected={collectionProviderKind === "unsure"}
+                    onClick={() => {
+                      setCollectionProviderKind("unsure");
+                      setCollectionProvider("");
+                      advance("provider");
+                    }}
+                  >
+                    I&apos;m not sure
+                  </Choice>
+                </div>
+                {collectionProviderKind === "private" ? (
+                  <div className="mt-4">
+                    <label htmlFor="ob-provider" className="mb-1 block text-base font-medium">
+                      Who&apos;s the hauler? <span className="text-muted">(optional)</span>
+                    </label>
+                    <input
+                      id="ob-provider"
+                      className={inputClasses}
+                      placeholder="e.g., WM"
+                      value={collectionProvider}
+                      onChange={(e) => setCollectionProvider(e.target.value)}
+                    />
+                  </div>
+                ) : null}
+                {collectionProviderKind === "private" ? (
+                  <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("provider")} />
+                ) : (
+                  stepNav
+                )}
               </section>
             ) : null}
 
@@ -975,9 +1170,10 @@ export function OnboardingFlow({
               <section className="mt-4">
                 <h2 className="text-xl font-bold">How do we get to the bins?</h2>
                 <label htmlFor="ob-access" className="mt-1 block text-base text-muted">
-                  Gate or garage codes, or key details. Optional.
+                  Gate or garage codes, or key details your runner needs to reach the bins.
                 </label>
                 <textarea id="ob-access" rows={3} className={`${inputClasses} mt-3`} placeholder="Codes or key details needed to reach the bins" value={accessSecretNotes} onChange={(e) => setAccessSecretNotes(e.target.value)} />
+                <Err message={fieldErrors.accessSecretNotes} />
                 <p className="mt-1 text-base text-muted">
                   Stored encrypted and shown only to your assigned runner during the service window —
                   never in emails or texts.
@@ -1005,7 +1201,7 @@ export function OnboardingFlow({
           ) : (
             <form onSubmit={submitStage4} noValidate className="mt-6 flex flex-col gap-5">
               {quote ? (
-                <div className="rounded-2xl border border-border bg-surface p-6">
+                <div className="rounded-2xl border border-cyan/40 bg-cyan/10 p-6">
                   <h2 className="text-xl font-bold">Your order</h2>
                   <p className="mt-2 text-lg">{quote.description}</p>
                   <p className="mt-1 text-3xl font-bold">

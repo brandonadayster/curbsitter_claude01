@@ -61,6 +61,15 @@ export const stage2Schema = z
     }
   });
 
+/**
+ * D-026: admin no longer reviews gate/garage access notes before first
+ * service — nothing about them can be verified from a desk anyway, only a
+ * site visit tells you if a code works. This is the replacement guardrail:
+ * catch a blank or too-short note at signup, since that's the one thing
+ * that actually is checkable before a runner ever shows up.
+ */
+export const ACCESS_SECRET_MIN_LENGTH = 10;
+
 export const WEEKDAYS = [
   "Sunday",
   "Monday",
@@ -79,6 +88,13 @@ export const stage3Schema = z
     hasBothBinTypes: z.boolean(),
     trashBinCount: z.number().int().min(1, "At least one bin.").max(6, "Maximum 6 bins."),
     recyclingBinCount: z.number().int().min(0).max(6).default(0),
+    /**
+     * Who actually collects, asked before the collection day so a private
+     * hauler's schedule is never cross-checked against City route data it
+     * was never part of (D-025).
+     */
+    collectionProviderKind: z.enum(["city", "private", "unsure"]).nullable().default(null),
+    /** Free-text hauler name; only collected when the provider is private. */
     collectionProvider: z.string().trim().max(120).optional().or(z.literal("")),
     /** Trash collection weekday. Rollout is always the evening before. */
     collectionDay: z.number().int().min(0).max(6).nullable(),
@@ -141,6 +157,16 @@ export const stage3Schema = z
           message: "Pick your recycling collection day, or mark that you're not sure.",
         });
       }
+    }
+    if (
+      (value.hazards.includes("gate") || value.hazards.includes("garage")) &&
+      (value.accessSecretNotes ?? "").trim().length < ACCESS_SECRET_MIN_LENGTH
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["accessSecretNotes"],
+        message: "Add gate or garage access details so your runner can reach the bins.",
+      });
     }
   });
 

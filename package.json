@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "sync:city-route-days": "node --env-file-if-exists=.env.local scripts/sync-city-route-days.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

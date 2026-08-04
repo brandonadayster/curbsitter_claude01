@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { geocode } from "@/lib/geocode";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { pointInCellGeometry } from "@/lib/geo";
 
@@ -50,65 +51,6 @@ const EXPANSION_ZIPS = new Set([
   "86327", "86329", // Dewey-Humboldt
   "86333", "86334", // Mayer, Paulden
 ]);
-
-interface GeocodeHit {
-  normalizedAddress: string;
-  latitude: number;
-  longitude: number;
-  placeId: string;
-  confidence: string;
-}
-
-/**
- * Mapbox Geocoding v6 forward-geocoding response shape (the fields this
- * function reads). v5 (`/geocoding/v5/mapbox.places/`) is deprecated; v6
- * moves the coordinate/address/id fields into `properties` and replaces the
- * old 0-1 `relevance` score with a `match_code.confidence` enum.
- * https://docs.mapbox.com/api/search/geocoding/#geocoding-response-object
- */
-interface GeocodeV6Response {
-  features?: Array<{
-    properties: {
-      mapbox_id: string;
-      full_address?: string;
-      place_formatted?: string;
-      coordinates: { longitude: number; latitude: number };
-      match_code?: { confidence?: "exact" | "high" | "medium" | "low" };
-    };
-  }>;
-}
-
-async function geocode(input: AddressCheckInput): Promise<GeocodeHit | null> {
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPS_TOKEN;
-  if (!token) return null;
-
-  const query = encodeURIComponent(`${input.addressLine1}, Prescott area AZ ${input.postalCode}`);
-  // `permanent=true`: the result is persisted indefinitely in eligibility_checks
-  // (and downstream on properties), not just displayed transiently, so this
-  // must be a permanent geocode under Mapbox's storage terms.
-  const url =
-    `https://api.mapbox.com/search/geocode/v6/forward?q=${query}` +
-    `&access_token=${token}&country=us&limit=1&types=address&permanent=true`;
-
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!response.ok) return null;
-    const data = (await response.json()) as GeocodeV6Response;
-    const feature = data.features?.[0];
-    if (!feature) return null;
-    const { properties } = feature;
-    return {
-      normalizedAddress: properties.full_address ?? properties.place_formatted ?? input.addressLine1,
-      longitude: properties.coordinates.longitude,
-      latitude: properties.coordinates.latitude,
-      placeId: properties.mapbox_id,
-      confidence: properties.match_code?.confidence ?? "unknown",
-    };
-  } catch {
-    // Geocoding is best-effort; qualification falls back to non-active outcomes.
-    return null;
-  }
-}
 
 export async function checkAddressEligibility(
   input: AddressCheckInput,

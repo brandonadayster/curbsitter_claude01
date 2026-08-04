@@ -256,9 +256,51 @@ Mobile is the priority viewport per the owner.
 - [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
   processes (dev servers, watch tasks, agents) not currently needed, to conserve resources.
   Standing practice per owner request 2026-07-31, not a one-time item.
+- [x] PP-21 Onboarding redesign: persona-aware click-to-answer signup (2026-08-04). Plan at
+  `/home/brandon/.claude/plans/hashed-booping-abelson.md`. Materially separate from PP-14, which
+  only touched onDemand reschedule — this replaced stage 3's single scrolling form with a
+  ~9-13 question sub-wizard and added persona-matched benefits/FAQs alongside stage 1.
+  Owner decisions: no fabricated reviews (benefits + FAQs only, per D-015); `property_type` gets
+  its own migrated column; organics/other bin types dropped (Prescott is trash + recycling only,
+  same-day, different trucks); no service date collected at signup, day-of-week only (**this
+  last one was reversed 2026-08-04 by D-024 — see below, not yet implemented**).
+  New: `src/lib/personas.ts` (`resolvePersona()` + per-persona headline/benefits/FAQs, lifted
+  from approved marketing copy), `src/components/onboarding/persona-panel.tsx`, a rewritten
+  `src/components/onboarding/onboarding-flow.tsx` (stage-1 persona/property questions, stage-3
+  click-to-answer sub-wizard). `src/lib/onboarding.ts` now reads the previously-dormant
+  `collectionCoverage` config to implement the schedule-row rule: same-day trash/recycling is
+  always one `collection_schedules` row regardless of plan (unchanged, prevents double-booking
+  one real visit); different-day is one row on Home (no silent upgrade) and two rows on
+  Complete; onDemand always anchors to trash day only. `src/lib/pricing.ts`'s `binLimitOk` now
+  sums trash + recycling against the plan cap.
+  Tests: 10 new unit tests for `resolvePersona()` (`tests/unit/personas.test.ts`) covering HOA
+  priority ordering, family_member/tenants_or_guests overriding property type, myself refined by
+  vacation_rental/second_home, and the null/default case; 15 new integration tests
+  (`tests/integration/onboarding-schedule-rows.test.ts`) covering the schedule-row rule across
+  Home × Complete × same-day × different-day, per-type bin counts, and `property_type`
+  persistence, run against a real local Supabase stack; 2 new Playwright a11y specs
+  (`tests/e2e/onboarding-a11y.spec.ts` + `.mobile.spec.ts`) walking every distinct stage-3
+  control type (Choice single/binary/multi-select, CountPicker, DayPicker with and without the
+  Home-coverage warning, optional text inputs, preset pills, the gated access textarea) plus
+  stage 4 — zero serious/critical violations, desktop and mobile. Full suite green: 60/60 unit,
+  89/90 integration (the one failure is the pre-existing PP-05 referral-amount drift, unrelated
+  and already flagged under PP-14), 49/49 e2e.
+  A CI-repair commit after this landed also fixed two regressions PR review caught: the
+  onboarding City field's "Prescott" default had been dropped to `""` in the stage-1 rewrite
+  (real user impact, not just a test gap), and `admin-operations.spec.ts`'s pending-order
+  locator matched removed "requested for &lt;date&gt;" text.
+  Known, deliberately out of scope: stage 3 went from one scrolling form to ~13 one-question
+  screens; draft resume persists `current_stage`, not sub-step, so an abandoned signup resumes
+  at the top of stage 3 rather than where they left off. Persisting sub-step would change the
+  draft API contract.
+  Follow-on decisions made 2026-08-04, not yet implemented (see `DECISION_REGISTER.md`
+  D-024/D-025/D-026): show a confirmed pickup date to customers instead of day-of-week only;
+  automate collection-day verification against the City of Prescott's public ArcGIS lookup with
+  a customer-facing conflict-confirmation flow on mismatch; drop admin hazard/access review in
+  favor of schema-enforced non-empty access notes plus runner + exception tooling.
 
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-14`
+`CURRENT: PP-21`

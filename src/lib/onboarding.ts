@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { PLANS } from "@/config/business";
 import { encryptAccessSecret } from "@/lib/access-secrets";
+import type { CollectionDayCheck } from "@/lib/collection-day-verification";
 import {
   stage1Schema,
   stage2Schema,
@@ -13,6 +14,7 @@ import {
   type Stage3,
 } from "@/lib/onboarding-schemas";
 import { buildQuote } from "@/lib/pricing";
+import type { CommercialCheck } from "@/lib/property-usage-check";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /** Who the service is for → the paying-entity classification on `accounts`. */
@@ -32,6 +34,8 @@ export interface DraftRecord {
   stage2: Stage2 | null;
   stage3: Stage3 | null;
   access_secrets: { notes: string } | null;
+  collection_day_check: CollectionDayCheck | null;
+  commercial_check: CommercialCheck | null;
   status: string;
   finalized_account_id: string | null;
   expires_at: string;
@@ -44,7 +48,7 @@ export async function loadDraftByToken(
   const { data } = await supabase
     .from("onboarding_drafts")
     .select(
-      "id, client_token, eligibility_check_id, current_stage, stage1, stage2, stage3, access_secrets, status, finalized_account_id, expires_at",
+      "id, client_token, eligibility_check_id, current_stage, stage1, stage2, stage3, access_secrets, collection_day_check, commercial_check, status, finalized_account_id, expires_at",
     )
     .eq("client_token", token)
     .gt("expires_at", new Date().toISOString())
@@ -94,7 +98,14 @@ export async function finalizeOnboardingDraft(options: {
 
   const stage1 = stage1Schema.parse(draft.stage1);
   const stage2 = stage2Schema.parse(draft.stage2);
-  const stage3 = stage3Schema.parse(draft.stage3);
+  // Access notes live in their own column (never in ordinary stage data), so
+  // reassemble the logical stage3 before parsing — otherwise the gate/garage
+  // notes requirement (D-026) would fail here for every gated property, after
+  // the customer has already paid.
+  const stage3 = stage3Schema.parse({
+    ...(draft.stage3 as Record<string, unknown>),
+    accessSecretNotes: draft.access_secrets?.notes ?? "",
+  });
   const quote = buildQuote(stage3);
 
   const payerEmail = stage2.payer.email.toLowerCase();
@@ -192,16 +203,44 @@ export async function finalizeOnboardingDraft(options: {
   ];
   await supabase.from("bins").insert(binRows);
 
+  // D-025: the City cross-check result, recorded at stage 3. A verified
+  // match needs no admin attention; a conflict the customer chose to keep
+  // does. A property outside the City's zones (private hauler) or an
+  // unreachable check is plain self-report — the same as it was before
+  // this check existed, and not a review reason.
+  const dayCheck = draft.collection_day_check;
+  const cityMismatchKept = dayCheck?.status === "mismatch" || dayCheck?.status === "mismatch_confirmed";
+  const cityVerified = dayCheck?.status === "match";
+
+  let trashVerification: "unverified" | "verified" | "needs_review" = "unverified";
+  let trashReviewReason: "customer_unsure" | "city_mismatch" | null = null;
+  if (stage3.collectionDayUnsure) {
+    trashVerification = "needs_review";
+    trashReviewReason = "customer_unsure";
+  } else if (cityMismatchKept) {
+    trashVerification = "needs_review";
+    trashReviewReason = "city_mismatch";
+  } else if (cityVerified) {
+    trashVerification = "verified";
+  }
+
+  const providerName =
+    stage3.collectionProviderKind === "city"
+      ? "City of Prescott"
+      : stage3.collectionProvider || null;
+
   // One schedule row per *distinct* collection day. `generateCyclesForDate`
   // creates a cycle per matching row, so writing a second row for recycling
   // when it shares the trash day would double-book one real visit.
   const scheduleRows = [
     {
       property_id: property.id,
-      provider: stage3.collectionProvider || null,
+      provider: providerName,
       waste_stream: "trash",
       weekday: stage3.collectionDayUnsure ? null : stage3.collectionDay,
-      verification_status: stage3.collectionDayUnsure ? "needs_review" : "unverified",
+      verification_status: trashVerification,
+      needs_review_reason: trashReviewReason,
+      city_weekday: dayCheck?.cityWeekday ?? null,
     },
   ];
 
@@ -219,10 +258,15 @@ export async function finalizeOnboardingDraft(options: {
   ) {
     scheduleRows.push({
       property_id: property.id,
-      provider: stage3.collectionProvider || null,
+      provider: providerName,
       waste_stream: "recycling",
       weekday: stage3.recyclingCollectionDayUnsure ? null : stage3.recyclingCollectionDay,
+      // Recycling day is never City-verified (D-025 is scoped to the trash
+      // day — the City's data models one day per zone), so it stays plain
+      // self-report unless the customer said they weren't sure.
       verification_status: stage3.recyclingCollectionDayUnsure ? "needs_review" : "unverified",
+      needs_review_reason: stage3.recyclingCollectionDayUnsure ? "customer_unsure" : null,
+      city_weekday: null,
     });
   }
 

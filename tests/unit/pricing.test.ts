@@ -10,6 +10,7 @@ function stage3(overrides: Partial<Stage3> = {}): Stage3 {
     hasBothBinTypes: false,
     trashBinCount: 2,
     recyclingBinCount: 0,
+    collectionProviderKind: "city",
     collectionProvider: "",
     collectionDay: 2,
     collectionDayUnsure: false,
