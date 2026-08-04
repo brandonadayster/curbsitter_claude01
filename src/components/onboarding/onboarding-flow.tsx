@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { PersonaPanel } from "@/components/onboarding/persona-panel";
 import { formatCents, ONE_TIME, PLANS, quarterlyMonthlyEquivalentCents } from "@/config/business";
 import {
   stage1Schema,
@@ -10,9 +11,40 @@ import {
   WEEKDAYS,
   type Stage1,
 } from "@/lib/onboarding-schemas";
+import {
+  PROPERTY_TYPE_OPTIONS,
+  resolvePersona,
+  SERVING_WHO_OPTIONS,
+  type PropertyType,
+  type ServingWho,
+} from "@/lib/personas";
 
 const inputClasses =
   "w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-lg text-text placeholder:text-muted focus:border-cyan";
+
+/** Click-to-answer control. A real button: keyboard-operable, 44px+ target. */
+function Choice({
+  selected,
+  onClick,
+  children,
+}: {
+  selected?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={`min-h-[44px] rounded-lg border px-4 py-3 text-left text-lg transition-colors ${
+        selected ? "border-cyan bg-cyan/10 font-semibold" : "border-border bg-surface-2 hover:border-cyan/60"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface Quote {
   description: string;
@@ -60,6 +92,148 @@ const STAGE_TITLES = [
   "Review and activate",
 ];
 
+type ServiceChoice = "home" | "complete" | "one_time_trash_day";
+
+type Step3 =
+  | "plan"
+  | "billing"
+  | "hasBoth"
+  | "trashCount"
+  | "recyclingCount"
+  | "trashDay"
+  | "sameDay"
+  | "recyclingDay"
+  | "provider"
+  | "hazards"
+  | "storage"
+  | "curbNotes"
+  | "access";
+
+/**
+ * The stage-3 question sequence for a given set of answers. Pure, and computed
+ * from *next* answers inside click handlers, so advancing never races the
+ * state update that just changed which questions apply.
+ */
+function buildStage3Steps(a: {
+  serviceChoice: ServiceChoice;
+  hasBothBinTypes: boolean | null;
+  sameDayCollection: boolean | null;
+  hazards: string[];
+}): Step3[] {
+  const steps: Step3[] = ["plan"];
+  if (a.serviceChoice !== "one_time_trash_day") steps.push("billing");
+  steps.push("hasBoth");
+  steps.push("trashCount");
+  if (a.hasBothBinTypes) steps.push("recyclingCount");
+  steps.push("trashDay");
+  if (a.hasBothBinTypes) steps.push("sameDay");
+  if (a.hasBothBinTypes && a.sameDayCollection === false) steps.push("recyclingDay");
+  steps.push("provider", "hazards", "storage", "curbNotes");
+  if (a.hazards.includes("gate") || a.hazards.includes("garage")) steps.push("access");
+  return steps;
+}
+
+/** Weekday picker shared by the trash and recycling day questions. */
+function DayPicker({
+  day,
+  unsure,
+  onPick,
+  onUnsure,
+}: {
+  day: number | null;
+  unsure: boolean;
+  onPick: (value: number) => void;
+  onUnsure: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {WEEKDAYS.map((label, index) => (
+        <Choice key={label} selected={!unsure && day === index} onClick={() => onPick(index)}>
+          {label}
+        </Choice>
+      ))}
+      <Choice selected={unsure} onClick={onUnsure}>
+        I&apos;m not sure — verify it for me
+      </Choice>
+    </div>
+  );
+}
+
+function CountPicker({
+  value,
+  max,
+  min,
+  onPick,
+}: {
+  value: number;
+  max: number;
+  min: number;
+  onPick: (n: number) => void;
+}) {
+  const options = Array.from({ length: Math.max(0, max - min + 1) }, (_, i) => min + i);
+  return (
+    <div className="flex flex-wrap gap-3">
+      {options.map((n) => (
+        <Choice key={n} selected={value === n} onClick={() => onPick(n)}>
+          <span className="inline-block min-w-[2ch] text-center">{n}</span>
+        </Choice>
+      ))}
+    </div>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="min-h-[44px] rounded-lg border border-border px-6 py-3 text-lg font-semibold"
+    >
+      Back
+    </button>
+  );
+}
+
+function ContinueBar({
+  onBack,
+  onContinue,
+  pending,
+  label = "Continue",
+}: {
+  onBack: () => void;
+  onContinue: () => void;
+  pending: boolean;
+  label?: string;
+}) {
+  return (
+    <div className="mt-6 flex gap-3">
+      <BackButton onClick={onBack} />
+      <button
+        type="button"
+        onClick={onContinue}
+        disabled={pending}
+        className="min-h-[44px] flex-1 rounded-lg bg-cyan px-6 py-3 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60"
+      >
+        {pending ? "Saving…" : label}
+      </button>
+    </div>
+  );
+}
+
+const STORAGE_PRESETS = ["Side yard", "In the garage", "Behind the gate", "Next to the driveway"];
+
+const HAZARD_OPTIONS: Array<[string, string]> = [
+  ["long_driveway", "Long driveway"],
+  ["steep_grade", "Steep grade"],
+  ["stairs", "Stairs"],
+  ["gate", "Gate"],
+  ["garage", "Bins in garage"],
+  ["animal", "Dog or other animals"],
+  ["poor_lighting", "Poor lighting"],
+  ["ice", "Winter ice"],
+  ["access_restriction", "Restricted entry"],
+];
+
 export function OnboardingFlow({
   eligibilityCheckId,
   existingToken,
@@ -78,9 +252,10 @@ export function OnboardingFlow({
   // Stage 1
   const [addressLine1, setAddressLine1] = useState("");
   const [unit, setUnit] = useState("");
-  const [city, setCity] = useState("Prescott");
+  const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [forSomeoneElse, setForSomeoneElse] = useState(false);
+  const [servingWho, setServingWho] = useState<ServingWho | null>(null);
+  const [propertyType, setPropertyType] = useState<PropertyType | null>(null);
 
   // Stage 2
   const [payerName, setPayerName] = useState("");
@@ -93,13 +268,18 @@ export function OnboardingFlow({
   const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   // Stage 3
-  const [serviceChoice, setServiceChoice] = useState<"home" | "complete" | "one_time_trash_day">("home");
+  const [stage3Step, setStage3Step] = useState<Step3>("plan");
+  const [serviceChoice, setServiceChoice] = useState<ServiceChoice>("home");
   const [billingInterval, setBillingInterval] = useState<"monthly" | "quarterly">("monthly");
-  const [binCount, setBinCount] = useState(2);
-  const [binTypes, setBinTypes] = useState<string[]>(["trash", "recycling"]);
+  const [hasBothBinTypes, setHasBothBinTypes] = useState<boolean | null>(null);
+  const [trashBinCount, setTrashBinCount] = useState(1);
+  const [recyclingBinCount, setRecyclingBinCount] = useState(0);
   const [collectionProvider, setCollectionProvider] = useState("");
   const [collectionDay, setCollectionDay] = useState<number | null>(null);
   const [collectionDayUnsure, setCollectionDayUnsure] = useState(false);
+  const [sameDayCollection, setSameDayCollection] = useState<boolean | null>(null);
+  const [recyclingCollectionDay, setRecyclingCollectionDay] = useState<number | null>(null);
+  const [recyclingCollectionDayUnsure, setRecyclingCollectionDayUnsure] = useState(false);
   const [binStorageLocation, setBinStorageLocation] = useState("");
   const [curbPlacementNotes, setCurbPlacementNotes] = useState("");
   const [hazards, setHazards] = useState<string[]>([]);
@@ -109,6 +289,14 @@ export function OnboardingFlow({
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptElectronicComms, setAcceptElectronicComms] = useState(false);
   const [acceptPhotoConsent, setAcceptPhotoConsent] = useState(false);
+
+  const forSomeoneElse = servingWho !== null && servingWho !== "myself";
+  const persona = resolvePersona(servingWho, propertyType);
+  const binCap =
+    serviceChoice === "one_time_trash_day" ? ONE_TIME.trashDayIncludedBins : PLANS[serviceChoice].maxBins;
+
+  const steps3 = buildStage3Steps({ serviceChoice, hasBothBinTypes, sameDayCollection, hazards });
+  const step3Index = Math.max(0, steps3.indexOf(stage3Step));
 
   // Resume an existing draft.
   useEffect(() => {
@@ -123,7 +311,8 @@ export function OnboardingFlow({
           setUnit(s1.unit ?? "");
           setCity(s1.city);
           setPostalCode(s1.postalCode);
-          setForSomeoneElse(s1.forSomeoneElse);
+          setServingWho(s1.servingWho);
+          setPropertyType(s1.propertyType);
         }
         if (draft.quote) setQuote(draft.quote as Quote);
         setStage(Math.min(draft.currentStage ?? 1, 4));
@@ -137,9 +326,46 @@ export function OnboardingFlow({
     set(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   }
 
+  /** Move to the question after `from`, given the answers as they now stand. */
+  function advance(
+    from: Step3,
+    overrides: Partial<{
+      serviceChoice: ServiceChoice;
+      hasBothBinTypes: boolean | null;
+      sameDayCollection: boolean | null;
+      hazards: string[];
+    }> = {},
+  ) {
+    const next = buildStage3Steps({
+      serviceChoice,
+      hasBothBinTypes,
+      sameDayCollection,
+      hazards,
+      ...overrides,
+    });
+    const index = next.indexOf(from);
+    setStage3Step(next[Math.min(index + 1, next.length - 1)]);
+  }
+
+  function back3() {
+    const index = steps3.indexOf(stage3Step);
+    if (index <= 0) {
+      setStage(2);
+      return;
+    }
+    setStage3Step(steps3[index - 1]);
+  }
+
   async function submitStage1(event: React.FormEvent) {
     event.preventDefault();
-    const parsed = stage1Schema.safeParse({ addressLine1, unit, city, postalCode, forSomeoneElse });
+    const parsed = stage1Schema.safeParse({
+      addressLine1,
+      unit,
+      city,
+      postalCode,
+      servingWho,
+      propertyType,
+    });
     if (!parsed.success) {
       setFieldErrors(zodErrors(parsed.error.issues));
       return;
@@ -212,16 +438,19 @@ export function OnboardingFlow({
     void patchDraft(2, parsed.data, 3);
   }
 
-  function submitStage3(event: React.FormEvent) {
-    event.preventDefault();
+  function submitStage3() {
     const data = {
       serviceChoice,
       billingInterval,
-      binCount,
-      binTypes,
+      hasBothBinTypes: hasBothBinTypes ?? false,
+      trashBinCount,
+      recyclingBinCount: hasBothBinTypes ? recyclingBinCount : 0,
       collectionProvider,
       collectionDay: collectionDayUnsure ? null : collectionDay,
       collectionDayUnsure,
+      sameDayCollection: hasBothBinTypes ? sameDayCollection : null,
+      recyclingCollectionDay: recyclingCollectionDayUnsure ? null : recyclingCollectionDay,
+      recyclingCollectionDayUnsure,
       binStorageLocation,
       curbPlacementNotes,
       hazards,
@@ -230,6 +459,7 @@ export function OnboardingFlow({
     const parsed = stage3Schema.safeParse(data);
     if (!parsed.success) {
       setFieldErrors(zodErrors(parsed.error.issues));
+      setFormError("Please check your answers — something needed above is missing.");
       return;
     }
     setFieldErrors({});
@@ -272,383 +502,578 @@ export function OnboardingFlow({
     }
   }
 
+  const stepNav = (
+    <div className="mt-6 flex gap-3">
+      <BackButton onClick={back3} />
+    </div>
+  );
+
+  const isLastStep3 = steps3.indexOf(stage3Step) === steps3.length - 1;
+  const continueOrSubmit = (from: Step3) => () => (isLastStep3 ? submitStage3() : advance(from));
+
   return (
-    <div>
-      <nav aria-label="Signup progress" className="mb-8">
-        <ol className="flex items-center gap-2">
-          {STAGE_TITLES.map((title, index) => {
-            const stepNumber = index + 1;
-            const isCurrent = stage === stepNumber;
-            const isDone = stage > stepNumber;
-            return (
-              <li key={title} className="flex-1">
-                <div
-                  aria-current={isCurrent ? "step" : undefined}
-                  className={`h-2 rounded-full ${
-                    isDone ? "bg-success" : isCurrent ? "bg-cyan" : "bg-surface-2"
-                  }`}
-                />
-                <span className="sr-only">
-                  Step {stepNumber}: {title} {isDone ? "(complete)" : isCurrent ? "(current)" : ""}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-        <p className="mt-3 text-base text-muted">
-          Step {stage} of 4 — {STAGE_TITLES[stage - 1]}
-        </p>
-      </nav>
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+      <div>
+        <nav aria-label="Signup progress" className="mb-8">
+          <ol className="flex items-center gap-2">
+            {STAGE_TITLES.map((title, index) => {
+              const stepNumber = index + 1;
+              const isCurrent = stage === stepNumber;
+              const isDone = stage > stepNumber;
+              return (
+                <li key={title} className="flex-1">
+                  <div
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={`h-2 rounded-full ${
+                      isDone ? "bg-success" : isCurrent ? "bg-cyan" : "bg-surface-2"
+                    }`}
+                  />
+                  <span className="sr-only">
+                    Step {stepNumber}: {title} {isDone ? "(complete)" : isCurrent ? "(current)" : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-3 text-base text-muted">
+            Step {stage} of 4 — {STAGE_TITLES[stage - 1]}
+          </p>
+        </nav>
 
-      <h1 className="text-3xl font-bold tracking-tight">{STAGE_TITLES[stage - 1]}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{STAGE_TITLES[stage - 1]}</h1>
 
-      {stage === 1 ? (
-        <form onSubmit={submitStage1} noValidate className="mt-6 flex flex-col gap-4">
-          <div>
-            <label htmlFor="ob-address" className="mb-1 block text-base font-medium">
-              Service street address
-            </label>
-            <input id="ob-address" autoComplete="street-address" className={inputClasses} value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
-            <Err message={fieldErrors.addressLine1} />
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="sm:w-1/3">
-              <label htmlFor="ob-unit" className="mb-1 block text-base font-medium">
-                Unit <span className="text-muted">(optional)</span>
+        {stage === 1 ? (
+          <form onSubmit={submitStage1} noValidate className="mt-6 flex flex-col gap-5">
+            <div>
+              <label htmlFor="ob-address" className="mb-1 block text-base font-medium">
+                Service street address
               </label>
-              <input id="ob-unit" className={inputClasses} value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <input id="ob-address" autoComplete="street-address" className={inputClasses} value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
+              <Err message={fieldErrors.addressLine1} />
             </div>
-            <div className="sm:w-1/3">
-              <label htmlFor="ob-city" className="mb-1 block text-base font-medium">
-                City
-              </label>
-              <input id="ob-city" className={inputClasses} value={city} onChange={(e) => setCity(e.target.value)} />
-              <Err message={fieldErrors.city} />
-            </div>
-            <div className="sm:w-1/3">
-              <label htmlFor="ob-zip" className="mb-1 block text-base font-medium">
-                ZIP code
-              </label>
-              <input id="ob-zip" inputMode="numeric" className={inputClasses} value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
-              <Err message={fieldErrors.postalCode} />
-            </div>
-          </div>
-          <fieldset className="rounded-lg border border-border p-4">
-            <legend className="px-1 text-base font-medium">Who is the service for?</legend>
-            <label className="flex items-center gap-3 py-1 text-lg">
-              <input type="radio" name="forWhom" className="h-5 w-5" checked={!forSomeoneElse} onChange={() => setForSomeoneElse(false)} />
-              Myself
-            </label>
-            <label className="flex items-center gap-3 py-1 text-lg">
-              <input type="radio" name="forWhom" className="h-5 w-5" checked={forSomeoneElse} onChange={() => setForSomeoneElse(true)} />
-              Someone else (a parent, tenant, or my rental property)
-            </label>
-          </fieldset>
-          <FormError message={formError} />
-          <button type="submit" disabled={pending} className="rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
-            {pending ? "Saving…" : "Continue"}
-          </button>
-        </form>
-      ) : null}
-
-      {stage === 2 ? (
-        <form onSubmit={submitStage2} noValidate className="mt-6 flex flex-col gap-4">
-          <h2 className="text-xl font-bold">Account owner / payer</h2>
-          <div>
-            <label htmlFor="ob-payer-name" className="mb-1 block text-base font-medium">Name</label>
-            <input id="ob-payer-name" autoComplete="name" className={inputClasses} value={payerName} onChange={(e) => setPayerName(e.target.value)} />
-            <Err message={fieldErrors["payer.fullName"]} />
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="sm:w-1/2">
-              <label htmlFor="ob-payer-email" className="mb-1 block text-base font-medium">Email</label>
-              <input id="ob-payer-email" type="email" autoComplete="email" className={inputClasses} value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} />
-              <Err message={fieldErrors["payer.email"]} />
-            </div>
-            <div className="sm:w-1/2">
-              <label htmlFor="ob-payer-phone" className="mb-1 block text-base font-medium">
-                Mobile <span className="text-muted">(optional unless texting)</span>
-              </label>
-              <input id="ob-payer-phone" type="tel" autoComplete="tel" className={inputClasses} value={payerPhone} onChange={(e) => setPayerPhone(e.target.value)} />
-              <Err message={fieldErrors["payer.phone"]} />
-            </div>
-          </div>
-
-          {forSomeoneElse ? (
-            <>
-              <h2 className="mt-2 text-xl font-bold">Service recipient at the property</h2>
-              <div>
-                <label htmlFor="ob-rec-name" className="mb-1 block text-base font-medium">Name</label>
-                <input id="ob-rec-name" className={inputClasses} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
-                <Err message={fieldErrors["serviceRecipient.fullName"]} />
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="sm:w-1/3">
+                <label htmlFor="ob-unit" className="mb-1 block text-base font-medium">
+                  Unit <span className="text-muted">(optional)</span>
+                </label>
+                <input id="ob-unit" className={inputClasses} value={unit} onChange={(e) => setUnit(e.target.value)} />
               </div>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="sm:w-1/2">
-                  <label htmlFor="ob-rec-email" className="mb-1 block text-base font-medium">Email</label>
-                  <input id="ob-rec-email" type="email" className={inputClasses} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} />
-                  <Err message={fieldErrors["serviceRecipient.email"]} />
-                </div>
-                <div className="sm:w-1/2">
-                  <label htmlFor="ob-rec-phone" className="mb-1 block text-base font-medium">
-                    Phone <span className="text-muted">(optional)</span>
-                  </label>
-                  <input id="ob-rec-phone" type="tel" className={inputClasses} value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} />
-                </div>
+              <div className="sm:w-1/3">
+                <label htmlFor="ob-city" className="mb-1 block text-base font-medium">
+                  City
+                </label>
+                <input id="ob-city" className={inputClasses} value={city} onChange={(e) => setCity(e.target.value)} />
+                <Err message={fieldErrors.city} />
               </div>
-            </>
-          ) : null}
-
-          <label className="flex items-start gap-3 text-base">
-            <input type="checkbox" className="mt-1 h-5 w-5" checked={smsOptIn} onChange={(e) => setSmsOptIn(e.target.checked)} />
-            <span>Text me service updates (optional). Message and data rates may apply; reply STOP to opt out.</span>
-          </label>
-          <label className="flex items-start gap-3 text-base">
-            <input type="checkbox" className="mt-1 h-5 w-5" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} />
-            <span>Email me occasional CurbSitter news beyond service updates (optional).</span>
-          </label>
-
-          <FormError message={formError} />
-          <div className="flex gap-3">
-            <button type="button" onClick={() => setStage(1)} className="rounded-lg border border-border px-6 py-3.5 text-lg font-semibold">
-              Back
-            </button>
-            <button type="submit" disabled={pending} className="flex-1 rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
-              {pending ? "Saving…" : "Continue"}
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {stage === 3 ? (
-        <form onSubmit={submitStage3} noValidate className="mt-6 flex flex-col gap-5">
-          <fieldset className="rounded-lg border border-border p-4">
-            <legend className="px-1 text-base font-medium">Service</legend>
-            {[
-              {
-                id: "home",
-                label: `${PLANS.home.publicName} — ${formatCents(PLANS.home.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("home"))}/month billed quarterly (up to ${PLANS.home.maxBins} bins, one collection day)`,
-              },
-              {
-                id: "complete",
-                label: `${PLANS.complete.publicName} — ${formatCents(PLANS.complete.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("complete"))}/month billed quarterly (up to ${PLANS.complete.maxBins} bins, every collection day)`,
-              },
-              {
-                id: "one_time_trash_day",
-                label: `${ONE_TIME.trashDayPublicName} — ${formatCents(ONE_TIME.trashDayPriceCents)} per service (up to ${ONE_TIME.trashDayIncludedBins} bins, single visit)`,
-              },
-            ].map((option) => (
-              <label key={option.id} className="flex items-start gap-3 py-1.5 text-lg">
-                <input
-                  type="radio"
-                  name="serviceChoice"
-                  className="mt-1.5 h-5 w-5"
-                  checked={serviceChoice === option.id}
-                  onChange={() => setServiceChoice(option.id as typeof serviceChoice)}
-                />
-                {option.label}
-              </label>
-            ))}
-          </fieldset>
-
-          {serviceChoice !== "one_time_trash_day" ? (
-            <fieldset className="rounded-lg border border-border p-4">
-              <legend className="px-1 text-base font-medium">Billing</legend>
-              <label className="flex items-center gap-3 py-1 text-lg">
-                <input type="radio" name="interval" className="h-5 w-5" checked={billingInterval === "monthly"} onChange={() => setBillingInterval("monthly")} />
-                Monthly
-              </label>
-              <label className="flex items-center gap-3 py-1 text-lg">
-                <input type="radio" name="interval" className="h-5 w-5" checked={billingInterval === "quarterly"} onChange={() => setBillingInterval("quarterly")} />
-                Quarterly — discounted, prepaid every 3 months (card or bank/ACH)
-              </label>
-            </fieldset>
-          ) : null}
-
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="sm:w-1/2">
-              <label htmlFor="ob-bin-count" className="mb-1 block text-base font-medium">How many bins?</label>
-              <input id="ob-bin-count" type="number" min={1} max={6} className={inputClasses} value={binCount} onChange={(e) => setBinCount(Number(e.target.value))} />
-              <Err message={fieldErrors.binCount} />
+              <div className="sm:w-1/3">
+                <label htmlFor="ob-zip" className="mb-1 block text-base font-medium">
+                  ZIP code
+                </label>
+                <input id="ob-zip" inputMode="numeric" className={inputClasses} value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+                <Err message={fieldErrors.postalCode} />
+              </div>
             </div>
-            <fieldset className="sm:w-1/2">
-              <legend className="mb-1 block text-base font-medium">Bin types</legend>
-              <div className="flex flex-wrap gap-3 pt-2">
-                {["trash", "recycling", "organics", "other"].map((type) => (
-                  <label key={type} className="flex items-center gap-2 text-lg capitalize">
-                    <input type="checkbox" className="h-5 w-5" checked={binTypes.includes(type)} onChange={() => toggle(binTypes, type, setBinTypes)} />
-                    {type}
-                  </label>
+
+            <fieldset>
+              <legend className="mb-2 text-base font-medium">Who is this service for?</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SERVING_WHO_OPTIONS.map((option) => (
+                  <Choice
+                    key={option.value}
+                    selected={servingWho === option.value}
+                    onClick={() => setServingWho(option.value)}
+                  >
+                    {option.label}
+                  </Choice>
                 ))}
               </div>
-              <Err message={fieldErrors.binTypes} />
+              <Err message={fieldErrors.servingWho} />
             </fieldset>
-          </div>
 
-          <div>
-            <label htmlFor="ob-provider" className="mb-1 block text-base font-medium">
-              Collection provider <span className="text-muted">(optional)</span>
-            </label>
-            <input id="ob-provider" className={inputClasses} placeholder="e.g., City of Prescott, Patriot Disposal" value={collectionProvider} onChange={(e) => setCollectionProvider(e.target.value)} />
-          </div>
-
-          <div>
-            <label htmlFor="ob-day" className="mb-1 block text-base font-medium">Collection day</label>
-            <select
-              id="ob-day"
-              className={inputClasses}
-              disabled={collectionDayUnsure}
-              value={collectionDay ?? ""}
-              onChange={(e) => setCollectionDay(e.target.value === "" ? null : Number(e.target.value))}
-            >
-              <option value="">Select a day…</option>
-              {WEEKDAYS.map((day, index) => (
-                <option key={day} value={index}>
-                  {day}
-                </option>
-              ))}
-            </select>
-            <label className="mt-2 flex items-center gap-3 text-base">
-              <input type="checkbox" className="h-5 w-5" checked={collectionDayUnsure} onChange={(e) => setCollectionDayUnsure(e.target.checked)} />
-              I&apos;m not sure — please verify it for me
-            </label>
-            <Err message={fieldErrors.collectionDay} />
-          </div>
-
-          <div>
-            <label htmlFor="ob-storage" className="mb-1 block text-base font-medium">Where do the bins live?</label>
-            <input id="ob-storage" className={inputClasses} placeholder="e.g., left side yard behind the wooden gate" value={binStorageLocation} onChange={(e) => setBinStorageLocation(e.target.value)} />
-            <Err message={fieldErrors.binStorageLocation} />
-          </div>
-
-          <div>
-            <label htmlFor="ob-curb" className="mb-1 block text-base font-medium">
-              Curb placement notes <span className="text-muted">(optional)</span>
-            </label>
-            <input id="ob-curb" className={inputClasses} placeholder="e.g., right of the driveway, away from the mailbox" value={curbPlacementNotes} onChange={(e) => setCurbPlacementNotes(e.target.value)} />
-          </div>
-
-          <fieldset className="rounded-lg border border-border p-4">
-            <legend className="px-1 text-base font-medium">Anything we should plan for?</legend>
-            <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
-              {[
-                ["long_driveway", "Long driveway"],
-                ["steep_grade", "Steep grade"],
-                ["stairs", "Stairs"],
-                ["gate", "Gate"],
-                ["garage", "Bins in garage"],
-                ["animal", "Dog or other animals"],
-                ["poor_lighting", "Poor lighting"],
-                ["ice", "Winter ice"],
-                ["access_restriction", "Restricted entry"],
-              ].map(([value, label]) => (
-                <label key={value} className="flex items-center gap-3 text-lg">
-                  <input type="checkbox" className="h-5 w-5" checked={hazards.includes(value)} onChange={() => toggle(hazards, value, setHazards)} />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div>
-            <label htmlFor="ob-access" className="mb-1 block text-base font-medium">
-              Gate/garage access details <span className="text-muted">(optional)</span>
-            </label>
-            <textarea id="ob-access" rows={3} className={inputClasses} placeholder="Codes or key details needed to reach the bins" value={accessSecretNotes} onChange={(e) => setAccessSecretNotes(e.target.value)} />
-            <p className="mt-1 text-base text-muted">
-              Stored encrypted and shown only to your assigned runner during the service window —
-              never in emails or texts.
-            </p>
-          </div>
-
-          <FormError message={formError} />
-          <div className="flex gap-3">
-            <button type="button" onClick={() => setStage(2)} className="rounded-lg border border-border px-6 py-3.5 text-lg font-semibold">
-              Back
-            </button>
-            <button type="submit" disabled={pending} className="flex-1 rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
-              {pending ? "Saving…" : "Review"}
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {stage === 4 ? (
-        billingUnavailable ? (
-          <div aria-live="polite" className="mt-6 rounded-2xl border border-warning/40 bg-warning/10 p-6">
-            <h2 className="text-2xl font-bold">Almost there — we&apos;ll finish by email</h2>
-            <p className="mt-2 text-lg text-muted">
-              Online payment isn&apos;t available in this environment yet. Your details are
-              saved, and we&apos;ll follow up at your email address to complete setup and
-              payment. Nothing is charged until then.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={submitStage4} noValidate className="mt-6 flex flex-col gap-5">
-            {quote ? (
-              <div className="rounded-2xl border border-border bg-surface p-6">
-                <h2 className="text-xl font-bold">Your order</h2>
-                <p className="mt-2 text-lg">{quote.description}</p>
-                <p className="mt-1 text-3xl font-bold">
-                  {formatCents(quote.amountDueCents)}
-                  <span className="text-lg font-normal text-muted">
-                    {quote.recurrence === "one_time"
-                      ? " one-time"
-                      : quote.recurrence === "monthly"
-                        ? "/month, renews monthly"
-                        : "/quarter, prepaid (card or ACH), renews every 3 months"}
-                  </span>
-                </p>
-                {!quote.binLimitOk ? (
-                  <p role="alert" className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-base font-medium text-danger">
-                    Your bin count exceeds this plan&apos;s limit — go back and adjust the plan
-                    or bin count.
-                  </p>
-                ) : null}
-                {quote.requiresAccessReview ? (
-                  <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base text-warning">
-                    Your property access needs a quick review before first service. If anything
-                    changes the price, we&apos;ll show you first — no surprise charges.
-                  </p>
-                ) : null}
-                <p className="mt-3 text-base text-muted">
-                  Rollout the evening before collection (5–10 p.m.), return after collection.
-                  After payment your account is <strong>pending property and route review</strong>{" "}
-                  before the first service is scheduled.
-                </p>
+            <fieldset>
+              <legend className="mb-2 text-base font-medium">What kind of property is it?</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {PROPERTY_TYPE_OPTIONS.map((option) => (
+                  <Choice
+                    key={option.value}
+                    selected={propertyType === option.value}
+                    onClick={() => setPropertyType(option.value)}
+                  >
+                    {option.label}
+                  </Choice>
+                ))}
               </div>
+              <Err message={fieldErrors.propertyType} />
+            </fieldset>
+
+            <FormError message={formError} />
+            <button type="submit" disabled={pending} className="min-h-[44px] rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
+              {pending ? "Saving…" : "Continue"}
+            </button>
+          </form>
+        ) : null}
+
+        {stage === 2 ? (
+          <form onSubmit={submitStage2} noValidate className="mt-6 flex flex-col gap-4">
+            <h2 className="text-xl font-bold">Account owner / payer</h2>
+            <div>
+              <label htmlFor="ob-payer-name" className="mb-1 block text-base font-medium">Name</label>
+              <input id="ob-payer-name" autoComplete="name" className={inputClasses} value={payerName} onChange={(e) => setPayerName(e.target.value)} />
+              <Err message={fieldErrors["payer.fullName"]} />
+            </div>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="sm:w-1/2">
+                <label htmlFor="ob-payer-email" className="mb-1 block text-base font-medium">Email</label>
+                <input id="ob-payer-email" type="email" autoComplete="email" className={inputClasses} value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} />
+                <Err message={fieldErrors["payer.email"]} />
+              </div>
+              <div className="sm:w-1/2">
+                <label htmlFor="ob-payer-phone" className="mb-1 block text-base font-medium">
+                  Mobile <span className="text-muted">(optional unless texting)</span>
+                </label>
+                <input id="ob-payer-phone" type="tel" autoComplete="tel" className={inputClasses} value={payerPhone} onChange={(e) => setPayerPhone(e.target.value)} />
+                <Err message={fieldErrors["payer.phone"]} />
+              </div>
+            </div>
+
+            {forSomeoneElse ? (
+              <>
+                <h2 className="mt-2 text-xl font-bold">Service recipient at the property</h2>
+                <div>
+                  <label htmlFor="ob-rec-name" className="mb-1 block text-base font-medium">Name</label>
+                  <input id="ob-rec-name" className={inputClasses} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
+                  <Err message={fieldErrors["serviceRecipient.fullName"]} />
+                </div>
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="sm:w-1/2">
+                    <label htmlFor="ob-rec-email" className="mb-1 block text-base font-medium">Email</label>
+                    <input id="ob-rec-email" type="email" className={inputClasses} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} />
+                    <Err message={fieldErrors["serviceRecipient.email"]} />
+                  </div>
+                  <div className="sm:w-1/2">
+                    <label htmlFor="ob-rec-phone" className="mb-1 block text-base font-medium">
+                      Phone <span className="text-muted">(optional)</span>
+                    </label>
+                    <input id="ob-rec-phone" type="tel" className={inputClasses} value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} />
+                  </div>
+                </div>
+              </>
             ) : null}
 
             <label className="flex items-start gap-3 text-base">
-              <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-              <span>
-                I agree to the <a href="/terms" className="underline" target="_blank">Terms of Service</a> and{" "}
-                <a href="/privacy" className="underline" target="_blank">Privacy Policy</a>.
-              </span>
+              <input type="checkbox" className="mt-1 h-5 w-5" checked={smsOptIn} onChange={(e) => setSmsOptIn(e.target.checked)} />
+              <span>Text me service updates (optional). Message and data rates may apply; reply STOP to opt out.</span>
             </label>
             <label className="flex items-start gap-3 text-base">
-              <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptElectronicComms} onChange={(e) => setAcceptElectronicComms(e.target.checked)} />
-              <span>I agree to receive service communications electronically.</span>
-            </label>
-            <label className="flex items-start gap-3 text-base">
-              <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptPhotoConsent} onChange={(e) => setAcceptPhotoConsent(e.target.checked)} />
-              <span>
-                I consent to service-verification photos of my bins and their placement (stored
-                privately).
-              </span>
+              <input type="checkbox" className="mt-1 h-5 w-5" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} />
+              <span>Email me occasional CurbSitter news beyond service updates (optional).</span>
             </label>
 
             <FormError message={formError} />
             <div className="flex gap-3">
-              <button type="button" onClick={() => setStage(3)} className="rounded-lg border border-border px-6 py-3.5 text-lg font-semibold">
+              <button type="button" onClick={() => setStage(1)} className="min-h-[44px] rounded-lg border border-border px-6 py-3.5 text-lg font-semibold">
                 Back
               </button>
-              <button type="submit" disabled={pending || (quote !== null && !quote.binLimitOk)} className="flex-1 rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
-                {pending ? "Starting payment…" : "Continue to Payment"}
+              <button type="submit" disabled={pending} className="min-h-[44px] flex-1 rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
+                {pending ? "Saving…" : "Continue"}
               </button>
             </div>
           </form>
-        )
-      ) : null}
+        ) : null}
+
+        {stage === 3 ? (
+          <div className="mt-6">
+            <p aria-live="polite" className="text-base text-muted">
+              Question {step3Index + 1} of {steps3.length}
+            </p>
+
+            {stage3Step === "plan" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Which service do you want?</h2>
+                <div className="mt-4 grid gap-3">
+                  {(
+                    [
+                      ["home", `${PLANS.home.publicName} — ${formatCents(PLANS.home.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("home"))}/month billed quarterly (up to ${PLANS.home.maxBins} bins, one collection day)`],
+                      ["complete", `${PLANS.complete.publicName} — ${formatCents(PLANS.complete.monthlyPriceCents)}/month, or ${formatCents(quarterlyMonthlyEquivalentCents("complete"))}/month billed quarterly (up to ${PLANS.complete.maxBins} bins, every collection day)`],
+                      ["one_time_trash_day", `${ONE_TIME.trashDayPublicName} — ${formatCents(ONE_TIME.trashDayPriceCents)} per service (up to ${ONE_TIME.trashDayIncludedBins} bins, single visit)`],
+                    ] as Array<[ServiceChoice, string]>
+                  ).map(([value, label]) => (
+                    <Choice
+                      key={value}
+                      selected={serviceChoice === value}
+                      onClick={() => {
+                        setServiceChoice(value);
+                        advance("plan", { serviceChoice: value });
+                      }}
+                    >
+                      {label}
+                    </Choice>
+                  ))}
+                </div>
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "billing" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">How would you like to be billed?</h2>
+                <div className="mt-4 grid gap-3">
+                  <Choice
+                    selected={billingInterval === "monthly"}
+                    onClick={() => {
+                      setBillingInterval("monthly");
+                      advance("billing");
+                    }}
+                  >
+                    Monthly
+                  </Choice>
+                  <Choice
+                    selected={billingInterval === "quarterly"}
+                    onClick={() => {
+                      setBillingInterval("quarterly");
+                      advance("billing");
+                    }}
+                  >
+                    Quarterly — discounted, prepaid every 3 months (card or bank/ACH)
+                  </Choice>
+                </div>
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "hasBoth" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Do you have both trash and recycling bins?</h2>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Choice
+                    selected={hasBothBinTypes === true}
+                    onClick={() => {
+                      setHasBothBinTypes(true);
+                      if (recyclingBinCount === 0) setRecyclingBinCount(1);
+                      advance("hasBoth", { hasBothBinTypes: true });
+                    }}
+                  >
+                    Yes, both
+                  </Choice>
+                  <Choice
+                    selected={hasBothBinTypes === false}
+                    onClick={() => {
+                      setHasBothBinTypes(false);
+                      setRecyclingBinCount(0);
+                      setSameDayCollection(null);
+                      advance("hasBoth", { hasBothBinTypes: false });
+                    }}
+                  >
+                    Trash only
+                  </Choice>
+                </div>
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "trashCount" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">How many trash bins?</h2>
+                <div className="mt-4">
+                  <CountPicker
+                    value={trashBinCount}
+                    min={1}
+                    max={binCap}
+                    onPick={(n) => {
+                      setTrashBinCount(n);
+                      advance("trashCount");
+                    }}
+                  />
+                </div>
+                <Err message={fieldErrors.trashBinCount} />
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "recyclingCount" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">How many recycling bins?</h2>
+                <p className="mt-1 text-base text-muted">
+                  Your plan covers up to {binCap} bins total, and {trashBinCount} of those are trash.
+                </p>
+                <div className="mt-4">
+                  <CountPicker
+                    value={recyclingBinCount}
+                    min={1}
+                    max={Math.max(1, binCap - trashBinCount)}
+                    onPick={(n) => {
+                      setRecyclingBinCount(n);
+                      advance("recyclingCount");
+                    }}
+                  />
+                </div>
+                <Err message={fieldErrors.recyclingBinCount} />
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "trashDay" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">What day is your trash picked up?</h2>
+                <p className="mt-1 text-base text-muted">
+                  We roll your bins out the evening before and bring them back after collection.
+                </p>
+                <div className="mt-4">
+                  <DayPicker
+                    day={collectionDay}
+                    unsure={collectionDayUnsure}
+                    onPick={(value) => {
+                      setCollectionDay(value);
+                      setCollectionDayUnsure(false);
+                      advance("trashDay");
+                    }}
+                    onUnsure={() => {
+                      setCollectionDayUnsure(true);
+                      setCollectionDay(null);
+                      advance("trashDay");
+                    }}
+                  />
+                </div>
+                <Err message={fieldErrors.collectionDay} />
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "sameDay" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Is recycling picked up the same day as trash?</h2>
+                <p className="mt-1 text-base text-muted">
+                  In most of Prescott they share a day — different trucks, same morning.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Choice
+                    selected={sameDayCollection === true}
+                    onClick={() => {
+                      setSameDayCollection(true);
+                      advance("sameDay", { sameDayCollection: true });
+                    }}
+                  >
+                    Yes, same day
+                  </Choice>
+                  <Choice
+                    selected={sameDayCollection === false}
+                    onClick={() => {
+                      setSameDayCollection(false);
+                      advance("sameDay", { sameDayCollection: false });
+                    }}
+                  >
+                    No, a different day
+                  </Choice>
+                </div>
+                <Err message={fieldErrors.sameDayCollection} />
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "recyclingDay" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">What day is your recycling picked up?</h2>
+                {serviceChoice === "home" ? (
+                  <p className="mt-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base">
+                    Heads up: {PLANS.home.publicName} covers one collection day each week, so only
+                    your trash day would be serviced. {PLANS.complete.publicName} covers every
+                    regular collection day at the address — you can go back and switch plans.
+                  </p>
+                ) : null}
+                <div className="mt-4">
+                  <DayPicker
+                    day={recyclingCollectionDay}
+                    unsure={recyclingCollectionDayUnsure}
+                    onPick={(value) => {
+                      setRecyclingCollectionDay(value);
+                      setRecyclingCollectionDayUnsure(false);
+                      advance("recyclingDay");
+                    }}
+                    onUnsure={() => {
+                      setRecyclingCollectionDayUnsure(true);
+                      setRecyclingCollectionDay(null);
+                      advance("recyclingDay");
+                    }}
+                  />
+                </div>
+                <Err message={fieldErrors.recyclingCollectionDay} />
+                {stepNav}
+              </section>
+            ) : null}
+
+            {stage3Step === "provider" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Who collects your trash?</h2>
+                <label htmlFor="ob-provider" className="mt-1 block text-base text-muted">
+                  Optional — it helps us match your street&apos;s schedule.
+                </label>
+                <input id="ob-provider" className={`${inputClasses} mt-3`} placeholder="e.g., City of Prescott, Patriot Disposal" value={collectionProvider} onChange={(e) => setCollectionProvider(e.target.value)} />
+                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("provider")} />
+              </section>
+            ) : null}
+
+            {stage3Step === "hazards" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Anything we should plan for?</h2>
+                <p className="mt-1 text-base text-muted">
+                  Select all that apply, or continue if none do.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {HAZARD_OPTIONS.map(([value, label]) => (
+                    <Choice
+                      key={value}
+                      selected={hazards.includes(value)}
+                      onClick={() => toggle(hazards, value, setHazards)}
+                    >
+                      {label}
+                    </Choice>
+                  ))}
+                </div>
+                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("hazards")} />
+              </section>
+            ) : null}
+
+            {stage3Step === "storage" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Where do the bins live?</h2>
+                <p className="mt-1 text-base text-muted">
+                  So the runner knows where to find them and where to put them back.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {STORAGE_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setBinStorageLocation(preset)}
+                      className="min-h-[44px] rounded-full border border-border px-4 py-2 text-base hover:border-cyan/60"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <label htmlFor="ob-storage" className="sr-only">
+                  Where do the bins live?
+                </label>
+                <input id="ob-storage" className={`${inputClasses} mt-3`} placeholder="e.g., left side yard behind the wooden gate" value={binStorageLocation} onChange={(e) => setBinStorageLocation(e.target.value)} />
+                <Err message={fieldErrors.binStorageLocation} />
+                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("storage")} />
+              </section>
+            ) : null}
+
+            {stage3Step === "curbNotes" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">Where should the bins go at the curb?</h2>
+                <label htmlFor="ob-curb" className="mt-1 block text-base text-muted">
+                  Optional — HOA rules, mailbox clearance, anything specific.
+                </label>
+                <input id="ob-curb" className={`${inputClasses} mt-3`} placeholder="e.g., right of the driveway, away from the mailbox" value={curbPlacementNotes} onChange={(e) => setCurbPlacementNotes(e.target.value)} />
+                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("curbNotes")} label={isLastStep3 ? "Review" : "Continue"} />
+              </section>
+            ) : null}
+
+            {stage3Step === "access" ? (
+              <section className="mt-4">
+                <h2 className="text-xl font-bold">How do we get to the bins?</h2>
+                <label htmlFor="ob-access" className="mt-1 block text-base text-muted">
+                  Gate or garage codes, or key details. Optional.
+                </label>
+                <textarea id="ob-access" rows={3} className={`${inputClasses} mt-3`} placeholder="Codes or key details needed to reach the bins" value={accessSecretNotes} onChange={(e) => setAccessSecretNotes(e.target.value)} />
+                <p className="mt-1 text-base text-muted">
+                  Stored encrypted and shown only to your assigned runner during the service window —
+                  never in emails or texts.
+                </p>
+                <ContinueBar onBack={back3} pending={pending} onContinue={continueOrSubmit("access")} label="Review" />
+              </section>
+            ) : null}
+
+            <div className="mt-4">
+              <FormError message={formError} />
+            </div>
+          </div>
+        ) : null}
+
+        {stage === 4 ? (
+          billingUnavailable ? (
+            <div aria-live="polite" className="mt-6 rounded-2xl border border-warning/40 bg-warning/10 p-6">
+              <h2 className="text-2xl font-bold">Almost there — we&apos;ll finish by email</h2>
+              <p className="mt-2 text-lg text-muted">
+                Online payment isn&apos;t available in this environment yet. Your details are
+                saved, and we&apos;ll follow up at your email address to complete setup and
+                payment. Nothing is charged until then.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={submitStage4} noValidate className="mt-6 flex flex-col gap-5">
+              {quote ? (
+                <div className="rounded-2xl border border-border bg-surface p-6">
+                  <h2 className="text-xl font-bold">Your order</h2>
+                  <p className="mt-2 text-lg">{quote.description}</p>
+                  <p className="mt-1 text-3xl font-bold">
+                    {formatCents(quote.amountDueCents)}
+                    <span className="text-lg font-normal text-muted">
+                      {quote.recurrence === "one_time"
+                        ? " one-time"
+                        : quote.recurrence === "monthly"
+                          ? "/month, renews monthly"
+                          : "/quarter, prepaid (card or ACH), renews every 3 months"}
+                    </span>
+                  </p>
+                  {!quote.binLimitOk ? (
+                    <p role="alert" className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-base font-medium text-danger">
+                      Your bin count exceeds this plan&apos;s limit — go back and adjust the plan
+                      or bin count.
+                    </p>
+                  ) : null}
+                  {quote.requiresAccessReview ? (
+                    <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base text-warning">
+                      Your property access needs a quick review before first service. If anything
+                      changes the price, we&apos;ll show you first — no surprise charges.
+                    </p>
+                  ) : null}
+                  <p className="mt-3 text-base text-muted">
+                    Rollout the evening before collection (5–10 p.m.), return after collection.
+                    After payment your account is <strong>pending property and route review</strong>{" "}
+                    before the first service is scheduled.
+                  </p>
+                </div>
+              ) : null}
+
+              <label className="flex items-start gap-3 text-base">
+                <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+                <span>
+                  I agree to the <a href="/terms" className="underline" target="_blank">Terms of Service</a> and{" "}
+                  <a href="/privacy" className="underline" target="_blank">Privacy Policy</a>.
+                </span>
+              </label>
+              <label className="flex items-start gap-3 text-base">
+                <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptElectronicComms} onChange={(e) => setAcceptElectronicComms(e.target.checked)} />
+                <span>I agree to receive service communications electronically.</span>
+              </label>
+              <label className="flex items-start gap-3 text-base">
+                <input type="checkbox" className="mt-1 h-5 w-5" checked={acceptPhotoConsent} onChange={(e) => setAcceptPhotoConsent(e.target.checked)} />
+                <span>
+                  I consent to service-verification photos of my bins and their placement (stored
+                  privately).
+                </span>
+              </label>
+
+              <FormError message={formError} />
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setStage(3)} className="min-h-[44px] rounded-lg border border-border px-6 py-3.5 text-lg font-semibold">
+                  Back
+                </button>
+                <button type="submit" disabled={pending || (quote !== null && !quote.binLimitOk)} className="min-h-[44px] flex-1 rounded-lg bg-cyan px-6 py-3.5 text-lg font-semibold text-bg hover:bg-cyan-strong disabled:opacity-60">
+                  {pending ? "Starting payment…" : "Continue to Payment"}
+                </button>
+              </div>
+            </form>
+          )
+        ) : null}
+      </div>
+
+      <div className="mt-10 lg:mt-0">
+        <PersonaPanel persona={persona} />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { signIn, signOut } from "./fixtures/auth";
-import { DEV_USERS } from "./fixtures/ids";
+import { DEV_USERS, E2E } from "./fixtures/ids";
+import { adminClient } from "./fixtures/provision";
 
 test.beforeEach(async ({ page }) => {
   await signIn(page, DEV_USERS.customer.email);
@@ -62,4 +63,102 @@ test("overview shows a property map (or its fallback) for the seeded, located pr
   const canvas = page.locator(".mapboxgl-canvas");
   const fallback = page.getByText(/map view unavailable/i);
   await expect(canvas.or(fallback).first()).toBeVisible({ timeout: 10_000 });
+});
+
+/**
+ * PP-14: self-serve reschedule for a scheduled one-time CurbSitter onDemand
+ * order. Both dates land on the fixture property's verified Wednesday
+ * schedule (weekday 3).
+ */
+async function seedOrder(
+  db: ReturnType<typeof adminClient>,
+  orderId: string,
+  requestedDate: string,
+  taskStatus: "scheduled" | "assigned",
+) {
+  await db.from("orders").insert({
+    id: orderId,
+    account_id: E2E.accountId,
+    property_id: E2E.propertyId,
+    status: "scheduled",
+    requested_date: requestedDate,
+  });
+
+  let routeId: string | null = null;
+  if (taskStatus === "assigned") {
+    const { data: route } = await db
+      .from("routes")
+      .insert({ route_date: requestedDate, task_type: "rollout", status: "published" })
+      .select("id")
+      .single();
+    routeId = route!.id;
+  }
+
+  await db.from("service_tasks").insert([
+    {
+      property_id: E2E.propertyId,
+      order_id: orderId,
+      task_type: "rollout",
+      status: taskStatus,
+      route_id: routeId,
+      window_start: `${requestedDate}T17:00:00-07:00`,
+      window_end: `${requestedDate}T22:00:00-07:00`,
+    },
+    {
+      property_id: E2E.propertyId,
+      order_id: orderId,
+      task_type: "return",
+      status: taskStatus,
+      route_id: routeId,
+      window_start: `${requestedDate}T12:00:00-07:00`,
+      window_end: `${requestedDate}T21:00:00-07:00`,
+    },
+  ]);
+}
+
+async function cleanupOrder(db: ReturnType<typeof adminClient>, orderId: string) {
+  await db.from("service_tasks").delete().eq("order_id", orderId);
+  await db.from("orders").delete().eq("id", orderId);
+}
+
+test("customer can reschedule a one-time order before its route is built", async ({ page }) => {
+  const db = adminClient();
+  const orderId = "e2e00000-0000-4000-8000-0000000000b1";
+  await seedOrder(db, orderId, "2026-09-02", "scheduled");
+
+  try {
+    await page.goto("/app");
+    await expect(page.getByRole("heading", { name: /your one-time service/i })).toBeVisible();
+    await expect(page.getByText(/2026-09-02/)).toBeVisible();
+
+    await page.getByLabel(/request a different pickup date/i).fill("2026-09-09");
+    await page.getByRole("button", { name: /request new date/i }).click();
+
+    await expect(page.getByText(/2026-09-09/)).toBeVisible();
+
+    await expect
+      .poll(async () => {
+        const { data } = await db.from("orders").select("requested_date").eq("id", orderId).single();
+        return data?.requested_date;
+      })
+      .toBe("2026-09-09");
+  } finally {
+    await cleanupOrder(db, orderId);
+  }
+});
+
+test("reschedule is blocked once the route has been finalized", async ({ page }) => {
+  const db = adminClient();
+  const orderId = "e2e00000-0000-4000-8000-0000000000b2";
+  await seedOrder(db, orderId, "2026-09-16", "assigned");
+
+  try {
+    await page.goto("/app");
+    await expect(page.getByText(/2026-09-16/)).toBeVisible();
+    await expect(page.getByText(/route for this service date has already been finalized/i)).toBeVisible();
+    await expect(page.getByLabel(/request a different pickup date/i)).toHaveCount(0);
+  } finally {
+    await cleanupOrder(db, orderId);
+    await db.from("routes").delete().eq("route_date", "2026-09-16").eq("task_type", "rollout");
+  }
 });

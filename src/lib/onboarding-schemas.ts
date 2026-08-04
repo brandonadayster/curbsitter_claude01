@@ -10,7 +10,14 @@ export const stage1Schema = z.object({
   unit: z.string().trim().max(40).optional().or(z.literal("")),
   postalCode: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit ZIP code."),
   city: z.string().trim().min(2, "Enter the city."),
-  forSomeoneElse: z.boolean(),
+  servingWho: z.enum(["myself", "family_member", "tenants_or_guests", "hoa_community"]),
+  propertyType: z.enum([
+    "single_family",
+    "condo_townhome",
+    "vacation_rental",
+    "second_home",
+    "hoa_community",
+  ]),
 });
 
 export const contactSchema = z.object({
@@ -68,11 +75,18 @@ export const stage3Schema = z
   .object({
     serviceChoice: z.enum(["home", "complete", "one_time_trash_day"]),
     billingInterval: z.enum(["monthly", "quarterly"]).default("monthly"),
-    binCount: z.number().int().min(1, "At least one bin.").max(6, "Maximum 6 bins."),
-    binTypes: z.array(z.enum(["trash", "recycling", "organics", "other"])).min(1, "Select bin types."),
+    /** Prescott's municipal program is trash + recycling only — no organics stream. */
+    hasBothBinTypes: z.boolean(),
+    trashBinCount: z.number().int().min(1, "At least one bin.").max(6, "Maximum 6 bins."),
+    recyclingBinCount: z.number().int().min(0).max(6).default(0),
     collectionProvider: z.string().trim().max(120).optional().or(z.literal("")),
+    /** Trash collection weekday. Rollout is always the evening before. */
     collectionDay: z.number().int().min(0).max(6).nullable(),
     collectionDayUnsure: z.boolean().default(false),
+    /** Null until asked; only relevant when the property has both bin types. */
+    sameDayCollection: z.boolean().nullable().default(null),
+    recyclingCollectionDay: z.number().int().min(0).max(6).nullable().default(null),
+    recyclingCollectionDayUnsure: z.boolean().default(false),
     binStorageLocation: z.string().trim().min(3, "Tell us where the bins live.").max(400),
     curbPlacementNotes: z.string().trim().max(400).optional().or(z.literal("")),
     hazards: z
@@ -98,8 +112,35 @@ export const stage3Schema = z
       context.addIssue({
         code: "custom",
         path: ["collectionDay"],
-        message: "Pick your collection day, or mark that you're not sure.",
+        message: "Pick your trash collection day, or mark that you're not sure.",
       });
+    }
+    if (value.hasBothBinTypes) {
+      if (value.recyclingBinCount < 1) {
+        context.addIssue({
+          code: "custom",
+          path: ["recyclingBinCount"],
+          message: "Tell us how many recycling bins you have.",
+        });
+      }
+      if (value.sameDayCollection === null) {
+        context.addIssue({
+          code: "custom",
+          path: ["sameDayCollection"],
+          message: "Let us know whether recycling is picked up on the same day.",
+        });
+      }
+      if (
+        value.sameDayCollection === false &&
+        !value.recyclingCollectionDayUnsure &&
+        value.recyclingCollectionDay === null
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["recyclingCollectionDay"],
+          message: "Pick your recycling collection day, or mark that you're not sure.",
+        });
+      }
     }
   });
 

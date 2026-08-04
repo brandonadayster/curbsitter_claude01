@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { PLANS } from "@/config/business";
 import { encryptAccessSecret } from "@/lib/access-secrets";
 import {
   stage1Schema,
@@ -13,6 +14,14 @@ import {
 } from "@/lib/onboarding-schemas";
 import { buildQuote } from "@/lib/pricing";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+/** Who the service is for → the paying-entity classification on `accounts`. */
+function accountTypeFor(servingWho: Stage1["servingWho"]): string {
+  if (servingWho === "hoa_community") return "hoa";
+  if (servingWho === "tenants_or_guests") return "portfolio";
+  if (servingWho === "family_member") return "household";
+  return "individual";
+}
 
 export interface DraftRecord {
   id: string;
@@ -114,7 +123,7 @@ export async function finalizeOnboardingDraft(options: {
     .from("accounts")
     .insert({
       name: stage2.payer.fullName,
-      account_type: stage1.forSomeoneElse ? "household" : "individual",
+      account_type: accountTypeFor(stage1.servingWho),
       stripe_customer_id: options.stripeCustomerId,
       created_by: userId,
     })
@@ -156,6 +165,7 @@ export async function finalizeOnboardingDraft(options: {
       address_line2: stage1.unit || null,
       city: stage1.city,
       postal_code: stage1.postalCode,
+      property_type: stage1.propertyType,
       status: "pending_review",
     })
     .select("id")
@@ -170,19 +180,53 @@ export async function finalizeOnboardingDraft(options: {
     curb_placement_notes: stage3.curbPlacementNotes || null,
   });
 
-  const binRows = Array.from({ length: stage3.binCount }, (_, index) => ({
-    property_id: property.id,
-    bin_type: stage3.binTypes[index % stage3.binTypes.length],
-  }));
+  const binRows = [
+    ...Array.from({ length: stage3.trashBinCount }, () => ({
+      property_id: property.id,
+      bin_type: "trash",
+    })),
+    ...Array.from({ length: stage3.recyclingBinCount }, () => ({
+      property_id: property.id,
+      bin_type: "recycling",
+    })),
+  ];
   await supabase.from("bins").insert(binRows);
 
-  await supabase.from("collection_schedules").insert({
-    property_id: property.id,
-    provider: stage3.collectionProvider || null,
-    waste_stream: "trash",
-    weekday: stage3.collectionDayUnsure ? null : stage3.collectionDay,
-    verification_status: stage3.collectionDayUnsure ? "needs_review" : "unverified",
-  });
+  // One schedule row per *distinct* collection day. `generateCyclesForDate`
+  // creates a cycle per matching row, so writing a second row for recycling
+  // when it shares the trash day would double-book one real visit.
+  const scheduleRows = [
+    {
+      property_id: property.id,
+      provider: stage3.collectionProvider || null,
+      waste_stream: "trash",
+      weekday: stage3.collectionDayUnsure ? null : stage3.collectionDay,
+      verification_status: stage3.collectionDayUnsure ? "needs_review" : "unverified",
+    },
+  ];
+
+  // A separate recycling day is only *covered* by Complete, whose configured
+  // collectionCoverage is every regular collection day (PROJECT_TRUTH.md).
+  // Home covers one day, so it gets the trash row only — no silent upgrade.
+  // A one-time visit is anchored to trash day and never gets a second row.
+  const coversEveryCollectionDay =
+    quote.serviceChoice !== "one_time_trash_day" &&
+    PLANS[quote.serviceChoice].collectionCoverage === "all_regular_collection_days";
+  if (
+    stage3.hasBothBinTypes &&
+    stage3.sameDayCollection === false &&
+    coversEveryCollectionDay
+  ) {
+    scheduleRows.push({
+      property_id: property.id,
+      provider: stage3.collectionProvider || null,
+      waste_stream: "recycling",
+      weekday: stage3.recyclingCollectionDayUnsure ? null : stage3.recyclingCollectionDay,
+      verification_status: stage3.recyclingCollectionDayUnsure ? "needs_review" : "unverified",
+    });
+  }
+
+  await supabase.from("collection_schedules").insert(scheduleRows);
 
   if (stage3.hazards.length > 0) {
     await supabase.from("property_hazards").insert(
