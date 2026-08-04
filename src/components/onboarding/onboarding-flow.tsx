@@ -252,7 +252,7 @@ export function OnboardingFlow({
   // Stage 1
   const [addressLine1, setAddressLine1] = useState("");
   const [unit, setUnit] = useState("");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState("Prescott");
   const [postalCode, setPostalCode] = useState("");
   const [servingWho, setServingWho] = useState<ServingWho | null>(null);
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null);

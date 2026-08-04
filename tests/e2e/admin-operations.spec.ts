@@ -113,14 +113,16 @@ test("admin approves a one-time onDemand order and it generates the visit tasks"
     account_id: E2E.accountId,
     property_id: E2E.propertyId,
     status: "requested",
-    requested_date: "2026-09-23", // Wednesday — matches the fixture's weekday-3 schedule.
   });
 
   try {
     await page.goto("/admin/reviews");
     await expect(page.getByRole("heading", { name: /one-time ondemand orders/i })).toBeVisible();
 
-    const card = page.locator("li").filter({ hasText: E2E.address }).filter({ hasText: /2026-09-23/ });
+    // Pending orders no longer display a customer-supplied date (signup only
+    // asks for a collection day; the actual date is derived at approval), so
+    // the card is matched on address alone — unique among this test's fixtures.
+    const card = page.locator("li").filter({ hasText: E2E.address }).filter({ hasText: /CurbSitter onDemand/ });
     await expect(card).toBeVisible();
     await card.getByRole("button", { name: /^Approve$/ }).click();
 

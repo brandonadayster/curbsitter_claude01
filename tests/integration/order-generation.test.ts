@@ -9,7 +9,21 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * scheduling and self-serve reschedule. The expensive failure paths are
  * generating a visit on the wrong weekday, and auto-approving a reschedule
  * after the route for the original date has already been built.
+ *
+ * generateTasksForOrder computes the visit date at approval time (the next
+ * occurrence of the property's trash weekday from "today"), so it is not
+ * deterministic relative to a fixed constant across test runs. Tests that
+ * exercise rescheduleOrder read the actual scheduled date back from the DB
+ * after generation and compute relative dates from it, rather than assuming
+ * a fixed value.
  */
+
+/** Add whole weeks to an ISO date string, staying on the same weekday. */
+function addWeeks(date: string, weeks: number): string {
+  const d = new Date(`${date}T12:00:00-07:00`);
+  d.setUTCDate(d.getUTCDate() + weeks * 7);
+  return d.toISOString().slice(0, 10);
+}
 
 const localStackAvailable =
   process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("127.0.0.1") &&
@@ -95,17 +109,49 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
     expect(count).toBe(2);
   });
 
-  it("refuses to schedule a date that doesn't match the verified weekday", async () => {
+  it("computes the visit date from the trash weekday, ignoring any stored requested_date", async () => {
     const orderId = await createRequestedOrder();
     await supabase
       .from("orders")
+      // A stale/customer-supplied date must never leak through — the date is
+      // always derived from the property's verified trash weekday.
       .update({ status: "approved", requested_date: "2026-08-06" }) // Thursday, not Wednesday
       .eq("id", orderId);
 
-    await expect(generateTasksForOrder(orderId)).rejects.toThrow(OrderSchedulingError);
+    await generateTasksForOrder(orderId);
 
-    const { data: order } = await supabase.from("orders").select("status").eq("id", orderId).single();
-    expect(order?.status).toBe("approved"); // Not stranded "scheduled" with no tasks.
+    const { data: order } = await supabase
+      .from("orders")
+      .select("status, requested_date")
+      .eq("id", orderId)
+      .single();
+    expect(order?.status).toBe("scheduled");
+    expect(phoenixWeekday(order!.requested_date!)).toBe(weekday);
+  });
+
+  it("refuses to schedule a property with no verified collection day", async () => {
+    const { data: property } = await supabase
+      .from("properties")
+      .insert({
+        account_id: accountId,
+        address_line1: `${runId} No Schedule Ln`,
+        city: "Prescott",
+        postal_code: "86303",
+        status: "pending_review",
+      })
+      .select("id")
+      .single();
+
+    const { data: order } = await supabase
+      .from("orders")
+      .insert({ account_id: accountId, property_id: property!.id, status: "approved" })
+      .select("id")
+      .single();
+
+    await expect(generateTasksForOrder(order!.id)).rejects.toThrow(OrderSchedulingError);
+
+    const { data: reloaded } = await supabase.from("orders").select("status").eq("id", order!.id).single();
+    expect(reloaded?.status).toBe("approved"); // Not stranded "scheduled" with no tasks.
   });
 
   it("auto-approves a reschedule while the route hasn't been built", async () => {
@@ -113,7 +159,12 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
     await supabase.from("orders").update({ status: "approved" }).eq("id", orderId);
     await generateTasksForOrder(orderId);
 
-    const newDate = "2026-08-12"; // Next Wednesday
+    const { data: scheduled } = await supabase
+      .from("orders")
+      .select("requested_date")
+      .eq("id", orderId)
+      .single();
+    const newDate = addWeeks(scheduled!.requested_date!, 1);
     await rescheduleOrder(orderId, newDate, accountId);
 
     const { data: order } = await supabase
@@ -143,9 +194,16 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
     await supabase.from("orders").update({ status: "approved" }).eq("id", orderId);
     await generateTasksForOrder(orderId);
 
+    const { data: scheduled } = await supabase
+      .from("orders")
+      .select("requested_date")
+      .eq("id", orderId)
+      .single();
+    const scheduledDate = scheduled!.requested_date!;
+
     const { data: route } = await supabase
       .from("routes")
-      .insert({ route_date: requestedDate, task_type: "rollout", status: "published" })
+      .insert({ route_date: scheduledDate, task_type: "rollout", status: "published" })
       .select("id")
       .single();
 
@@ -159,7 +217,7 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
       .update({ status: "assigned", route_id: route!.id })
       .eq("id", tasks![0].id);
 
-    await expect(rescheduleOrder(orderId, "2026-08-19", accountId)).rejects.toMatchObject({
+    await expect(rescheduleOrder(orderId, addWeeks(scheduledDate, 2), accountId)).rejects.toMatchObject({
       code: "route_already_set",
     });
 
@@ -168,7 +226,7 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
       .select("requested_date")
       .eq("id", orderId)
       .single();
-    expect(order?.requested_date).toBe(requestedDate); // Unchanged.
+    expect(order?.requested_date).toBe(scheduledDate); // Unchanged.
   });
 
   it("rejects a reschedule to a date not later than the current one", async () => {
@@ -176,7 +234,15 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
     await supabase.from("orders").update({ status: "approved" }).eq("id", orderId);
     await generateTasksForOrder(orderId);
 
-    await expect(rescheduleOrder(orderId, requestedDate, accountId)).rejects.toMatchObject({
+    const { data: scheduled } = await supabase
+      .from("orders")
+      .select("requested_date")
+      .eq("id", orderId)
+      .single();
+
+    await expect(
+      rescheduleOrder(orderId, scheduled!.requested_date!, accountId),
+    ).rejects.toMatchObject({
       code: "date_not_later",
     });
   });
