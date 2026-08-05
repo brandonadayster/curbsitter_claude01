@@ -2,9 +2,13 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-/** Append a privileged-action audit entry (SECURITY_PRIVACY.md). No secrets. */
+/**
+ * Append a privileged-action audit entry (SECURITY_PRIVACY.md). No secrets.
+ * `actorId` is null for system-initiated actions with no human actor, such
+ * as D-027's automatic activation of a clean signup.
+ */
 export async function auditLog(entry: {
-  actorId: string;
+  actorId: string | null;
   action: string;
   entity: string;
   entityId?: string;
@@ -13,7 +17,7 @@ export async function auditLog(entry: {
 }): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase.from("audit_log").insert({
-    actor_id: entry.actorId,
+    actor_id: entry.actorId ?? null,
     action: entry.action,
     entity: entry.entity,
     entity_id: entry.entityId ?? null,

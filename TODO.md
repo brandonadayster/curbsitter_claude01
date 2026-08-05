@@ -256,9 +256,118 @@ Mobile is the priority viewport per the owner.
 - [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
   processes (dev servers, watch tasks, agents) not currently needed, to conserve resources.
   Standing practice per owner request 2026-07-31, not a one-time item.
+- [x] PP-21 Onboarding redesign: persona-aware click-to-answer signup (2026-08-04). Plan at
+  `/home/brandon/.claude/plans/hashed-booping-abelson.md`. Materially separate from PP-14, which
+  only touched onDemand reschedule — this replaced stage 3's single scrolling form with a
+  ~9-13 question sub-wizard and added persona-matched benefits/FAQs alongside stage 1.
+  Owner decisions: no fabricated reviews (benefits + FAQs only, per D-015); `property_type` gets
+  its own migrated column; organics/other bin types dropped (Prescott is trash + recycling only,
+  same-day, different trucks); no service date collected at signup, day-of-week only (**this
+  last one was reversed 2026-08-04 by D-024 — see below, not yet implemented**).
+  New: `src/lib/personas.ts` (`resolvePersona()` + per-persona headline/benefits/FAQs, lifted
+  from approved marketing copy), `src/components/onboarding/persona-panel.tsx`, a rewritten
+  `src/components/onboarding/onboarding-flow.tsx` (stage-1 persona/property questions, stage-3
+  click-to-answer sub-wizard). `src/lib/onboarding.ts` now reads the previously-dormant
+  `collectionCoverage` config to implement the schedule-row rule: same-day trash/recycling is
+  always one `collection_schedules` row regardless of plan (unchanged, prevents double-booking
+  one real visit); different-day is one row on Home (no silent upgrade) and two rows on
+  Complete; onDemand always anchors to trash day only. `src/lib/pricing.ts`'s `binLimitOk` now
+  sums trash + recycling against the plan cap.
+  Tests: 10 new unit tests for `resolvePersona()` (`tests/unit/personas.test.ts`) covering HOA
+  priority ordering, family_member/tenants_or_guests overriding property type, myself refined by
+  vacation_rental/second_home, and the null/default case; 15 new integration tests
+  (`tests/integration/onboarding-schedule-rows.test.ts`) covering the schedule-row rule across
+  Home × Complete × same-day × different-day, per-type bin counts, and `property_type`
+  persistence, run against a real local Supabase stack; 2 new Playwright a11y specs
+  (`tests/e2e/onboarding-a11y.spec.ts` + `.mobile.spec.ts`) walking every distinct stage-3
+  control type (Choice single/binary/multi-select, CountPicker, DayPicker with and without the
+  Home-coverage warning, optional text inputs, preset pills, the gated access textarea) plus
+  stage 4 — zero serious/critical violations, desktop and mobile. Full suite green: 60/60 unit,
+  89/90 integration (the one failure is the pre-existing PP-05 referral-amount drift, unrelated
+  and already flagged under PP-14), 49/49 e2e.
+  A CI-repair commit after this landed also fixed two regressions PR review caught: the
+  onboarding City field's "Prescott" default had been dropped to `""` in the stage-1 rewrite
+  (real user impact, not just a test gap), and `admin-operations.spec.ts`'s pending-order
+  locator matched removed "requested for &lt;date&gt;" text.
+  Known, deliberately out of scope: stage 3 went from one scrolling form to ~13 one-question
+  screens; draft resume persists `current_stage`, not sub-step, so an abandoned signup resumes
+  at the top of stage 3 rather than where they left off. Persisting sub-step would change the
+  draft API contract.
+  Follow-on decisions made 2026-08-04, not yet implemented (see `DECISION_REGISTER.md`
+  D-024/D-025/D-026): show a confirmed pickup date to customers instead of day-of-week only;
+  automate collection-day verification against the City of Prescott's public ArcGIS lookup with
+  a customer-facing conflict-confirmation flow on mismatch; drop admin hazard/access review in
+  favor of schema-enforced non-empty access notes plus runner + exception tooling.
+
+- [x] D-027 Auto-approval for clean signups, plus the D-025 stage-1 lookup revision (2026-08-04).
+  Plan at `/home/brandon/.claude/plans/clever-humming-diffie.md`. Builds directly on the
+  D-025/D-026 work committed under the PP-21 follow-ons. The payoff: a signup that clears both
+  automated checks — collection day settled **and** parcel records confirm residential — now
+  activates at payment instead of leaving the customer paid-then-silent. Everything else still
+  queues for admin, so the review queue only ever contains items with a stated reason.
+  Owner decisions made during planning: (1) an unknown collection day never auto-approves — a
+  null weekday breaks `generateTasksForOrder` and would show a subscriber "confirmed" with no
+  real schedule; (2) the City lookup moved to stage 1, so an "I'm not sure" answer is resolved
+  from data already on hand, and the City's day becomes the property's day; (3) **automating
+  WM's pickup-schedule lookup was rejected** — it's an access-controlled private API (HTTP 401
+  without an Okta token, keyed by Google Place ID) returning third-party customer *account*
+  records, unlike the City's open route-day zone polygons. An unsure customer with no City
+  coverage is no longer turned away: signup completes and an admin resolves the day by hand from
+  the hauler's own public tool. See `DECISION_REGISTER.md` D-027 and D-025a.
+  New: `supabase/migrations/20260805120000_stage1_city_lookup.sql`
+  (`onboarding_drafts.city_lookup`); `lookupCityWeekday()` + `combineDayCheck()` in
+  `src/lib/collection-day-verification.ts` (replacing `verifyCollectionDay` — the I/O now happens
+  once at stage 1 and the stage-3 route is a pure combine); `setCollectionDay` server action in
+  `src/app/(admin)/admin/reviews/actions.ts` with an inline weekday picker on any queue item
+  missing a day (nothing in the app could set a collection day before this, which is what made
+  the manual-lookup fallback viable); `service_confirmed` notification template. `auditLog`'s
+  `actorId` widened to `string | null` for the first system-initiated entry.
+  Also corrected two now-inaccurate public claims: `/terms` no longer says *all* accounts are
+  reviewed before first service, and gained a "Collection schedule accuracy" section disclaiming
+  liability for missed collection caused by inaccurate customer-supplied hauler/day information
+  (no public source covers every address in Prescott or Yavapai County). The stage-4 onboarding
+  review card carried the same stale "pending property and route review" promise and was updated
+  to match.
+  Tests: unit coverage for `combineDayCheck`'s full matrix and `lookupCityWeekday`; integration
+  coverage for every `collection_day_check` × `commercial_check` combination through
+  `finalizeOnboardingDraft`, including one-time-order auto-approval reaching `scheduled` with
+  tasks generated, and `setCollectionDay` clearing the review reason.
+- [x] D-026 cleanup: finish retiring admin hazard review (2026-08-05). The decision was locked
+  and the schema half shipped, but the UI and the flag it drove were still in place. Removed the
+  "Flags:" block and the `property_hazards` join from both lists on the admin review page, and
+  retired `requiresAccessReview` end to end (`pricing.ts`, `onboarding-flow.tsx`, the
+  `welcome_pending_review` payload and its conditional sentence in `notifications.ts`).
+  Hazards are untouched everywhere they still matter — the runner task view, the customer's own
+  property page, and the `property_hazards` write at finalize.
+  `tests/unit/pricing.test.ts`'s two flag assertions collapse into one that asserts the stronger
+  property: hazards never change the quote *at all* now, not just the price.
+
+- [x] D-024 Pickup date at signup + first-visit lead-time floor (2026-08-05). Plan at
+  `/home/brandon/.claude/plans/clever-humming-diffie.md`. Last unbuilt piece of the
+  D-024/025/026/027 group. Stage 4 now shows "Your first pickup: {date}" with rollout as its own
+  sentence naming the evening before — never labeled a pickup date (D-024). Shown whenever a day
+  is known, including one the City resolved for an unsure customer; suppressed when no day exists,
+  where the existing "we'll confirm with your hauler" notice already covers it.
+  **Owner confirmed the lead-time floor at 2 days.** Because pickup recurs weekly the floor pushes
+  anyone whose day falls inside it to the following week, so 2 is the smallest value that avoids
+  same-evening rollout at a property no runner has visited.
+  **Behavior change, not just display:** `generateTasksForOrder` previously booked the raw next
+  occurrence with no floor. Under D-027 a clean onDemand signup schedules seconds after stage 4,
+  so a display-only floor would have shown one date and booked another. Both now come from the
+  same pure `firstPickupDate()`, so they cannot diverge. Reschedule is deliberately not floored —
+  it only moves an existing order later on an already-approved property.
+  New: `SERVICE_WINDOWS.firstPickupLeadDays`; `firstPickupDate()` and `formatPhoenixDate()` in
+  `src/lib/phoenix-date.ts` (the latter replacing one of the inlined date-format option bags in
+  the customer portal — the two in `history/` deliberately keep their year and were left alone).
+  Tests: 12 new unit tests pinning the floor arithmetic against fixed dates, including the
+  exact-boundary case (a day landing exactly on the floor must be allowed, not bumped — the
+  off-by-one that would silently cost every affected customer a week), month-boundary crossing,
+  and a floor longer than a week. One new integration assertion that a booked visit equals the
+  floored date. E2E asserts the date renders on desktop and is correctly absent on the
+  no-day mobile path.
 
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-14`
+`CURRENT: D-024`

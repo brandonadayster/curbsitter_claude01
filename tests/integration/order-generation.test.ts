@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { SERVICE_WINDOWS } from "@/config/business";
 import { phoenixWeekday } from "@/lib/cycles";
 import { generateTasksForOrder, OrderSchedulingError, rescheduleOrder } from "@/lib/orders";
+import { firstPickupDate, phoenixToday } from "@/lib/phoenix-date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -22,6 +24,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 function addWeeks(date: string, weeks: number): string {
   const d = new Date(`${date}T12:00:00-07:00`);
   d.setUTCDate(d.getUTCDate() + weeks * 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00-07:00`);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
@@ -127,6 +135,28 @@ describe.skipIf(!localStackAvailable)("order scheduling", () => {
       .single();
     expect(order?.status).toBe("scheduled");
     expect(phoenixWeekday(order!.requested_date!)).toBe(weekday);
+  });
+
+  it("never books a first visit inside the D-024 lead-time floor", async () => {
+    // Rollout is the evening before, so a visit inside the floor would mean
+    // rolling out at a property no runner has been to. The booked date must
+    // clear the same floor onboarding showed the customer.
+    const orderId = await createRequestedOrder();
+    await supabase.from("orders").update({ status: "approved" }).eq("id", orderId);
+
+    await generateTasksForOrder(orderId);
+
+    const { data: order } = await supabase
+      .from("orders")
+      .select("requested_date")
+      .eq("id", orderId)
+      .single();
+
+    const earliest = addDays(phoenixToday(), SERVICE_WINDOWS.firstPickupLeadDays);
+    expect(order!.requested_date! >= earliest).toBe(true);
+    expect(order!.requested_date!).toBe(
+      firstPickupDate(weekday, phoenixToday(), SERVICE_WINDOWS.firstPickupLeadDays),
+    );
   });
 
   it("refuses to schedule a property with no verified collection day", async () => {

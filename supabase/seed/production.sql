@@ -42,6 +42,7 @@ insert into public.notification_templates (id, channel, subject, version, active
 values
   ('welcome_pending_review', 'email', 'Welcome to CurbSitter - property review in progress', '1', true),
   ('review_approved', 'email', 'Your CurbSitter service is approved', '1', true),
+  ('service_confirmed', 'email', 'You are all set - CurbSitter service is active', '1', true),
   ('service_scheduled', 'email', 'Your trash-day service is scheduled', '1', true),
   ('rollout_completed', 'email', 'Bins out - photo confirmed', '1', true),
   ('return_completed', 'email', 'Bins back - photo confirmed', '1', true),

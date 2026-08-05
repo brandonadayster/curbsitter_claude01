@@ -85,6 +85,13 @@ export const ONE_TIME = {
 export const SERVICE_WINDOWS = {
   rolloutStartLocal: "17:00",
   rolloutEndLocal: "22:00",
+  // D-024: a never-visited property needs lead time before its first pickup.
+  // Rollout happens the evening *before* collection, so without a floor a
+  // signup could require same-evening rollout at a property no runner has
+  // seen. Because pickup only recurs weekly, this pushes anyone whose day
+  // falls inside the floor to the following week — 2 is the smallest value
+  // that avoids same-evening rollout, so it delays the fewest customers.
+  firstPickupLeadDays: 2,
   returnTarget: "after_confirmed_collection_same_day",
   returnFallback: "published_next_day_window",
 } as const;

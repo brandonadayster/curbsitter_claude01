@@ -1,112 +1,79 @@
-# Session handoff — onboarding redesign (in progress)
+# Session handoff — D-024/025/026/027 all landed
 
-**Date:** 2026-08-03
-**Branch:** `claude/next-agenda-item-3accc3` (worktree `next-agenda-item-3accc3`)
-**State:** lint ✅ · typecheck ✅ · unit/integration tests not yet re-run after latest edits · e2e not re-run · nothing committed
+**Date:** 2026-08-05
+**Branch:** `claude/d-027-continuation-67fcdc` (worktree `d-027-continuation-67fcdc`)
+**Last commit:** `d250acc` — "D-024: show a real pickup date at signup, floored for first visits"
+**State:** lint ✅ · typecheck ✅ · 119/120 unit+integration ✅ · 50/50 e2e ✅ · pushed, PR #13 open
 
----
-
-## 1. What shipped earlier this session (DONE, verified)
-
-### PP-14 — Self-serve reschedule for CurbSitter onDemand orders
-Checked off in `TODO.md` with a full note. Verified green: lint, typecheck, 6 new integration
-tests, 3 new Playwright specs, and the full 33-test desktop e2e suite all passed against a live
-local Supabase stack. Also manually walked in the browser.
-
-**Scope note:** the ticket said "reschedule *and per-visit skip*". Owner clarified reschedule
-applies **only to one-time onDemand orders** — subscriptions run one fixed weekday per route cell,
-and pause/resume (P5-04) already covers "skip a visit" there. No skip control was built.
-
-Investigating turned up that **P6-02 was never finished** past the checkout capacity gate — no date
-was collected, no admin review path existed for `orders`, nothing generated `service_tasks` for an
-order, and customers couldn't see orders at all. All of that was fixed under PP-14 (owner chose not
-to split it out).
+Plan: `/home/brandon/.claude/plans/clever-humming-diffie.md`. Prior plan (D-024/025/026 context): `/home/brandon/.claude/plans/synthetic-mixing-bear.md`.
 
 ---
 
-## 2. What is IN PROGRESS (the onboarding redesign)
+## 1. Branch note (read first)
 
-Approved plan lives at `/home/brandon/.claude/plans/hashed-booping-abelson.md` — **read this first.**
+This branch was created from `main`, not from the D-025/D-026 work, so it originally lacked every prerequisite. It was **rebased onto `claude/next-agenda-item-3accc3`** (tip `715ac82`) at the start of this session. Both branches now share history up to `715ac82`; this branch adds `8bc5629` on top. `claude/next-agenda-item-3accc3` has *not* been updated — don't work in both.
 
-### Owner decisions already taken (do not re-litigate)
-- **No fabricated reviews.** Owner asked for persona-specific customer reviews; CurbSitter is
-  pre-launch and `AGENTS.md` hard-bans fake testimonials (D-015). Owner chose **benefits + FAQs
-  only**, no review slot at all until real reviews exist.
-- **`properties.property_type` gets its own column** — owner approved the migration in planning,
-  satisfying the `.claude/rules/database.md` sign-off requirement.
-- **Drop organics/other bin types.** Web-checked City of Prescott: trash + recycling only curbside,
-  no organics/greenwaste stream, and the two are collected same day (different trucks).
-- **No service date at signup.** Onboarding asks only the collection *day of week*; the actual date
-  is derived at approval ("that's for us to know" — rollout is always the evening before).
-
-### Code written so far (all lint+typecheck clean)
-| File | Status |
-| --- | --- |
-| `supabase/migrations/20260803120000_property_type.sql` | NEW — additive, applied via `db reset`, verified |
-| `src/lib/personas.ts` | NEW — `resolvePersona()` + per-persona headline/benefits/FAQs, all lifted from approved marketing copy |
-| `src/components/onboarding/persona-panel.tsx` | NEW — presentational panel |
-| `src/lib/onboarding-schemas.ts` | stage1 gained `servingWho` + `propertyType` (replacing `forSomeoneElse`); stage3 replaced `binCount`/`binTypes` with `hasBothBinTypes`/`trashBinCount`/`recyclingBinCount`, added `sameDayCollection`/`recyclingCollectionDay`/`recyclingCollectionDayUnsure`, dropped `requestedDate` |
-| `src/components/onboarding/onboarding-flow.tsx` | REWRITTEN — stage-1 persona/property questions, stage-3 click-to-answer sub-wizard, persona panel wired |
-| `src/lib/onboarding.ts` | per-type bin inserts (fixes a real alternation bug), 1-or-2 schedule rows per the Home/Complete coverage rule, writes `property_type`, derives `account_type` from persona, drops `requested_date` write |
-| `src/lib/pricing.ts` | `binLimitOk` now sums trash + recycling |
-| `src/lib/phoenix-date.ts` | added `nextOccurrenceOfWeekday` |
-| `src/lib/orders.ts` | `generateTasksForOrder` computes the date from the trash weekday instead of validating a supplied one; `trashWeekdayForProperty` scoped to `waste_stream='trash'` (important — a Complete property can now have 2 schedule rows and `.maybeSingle()` would have errored) |
-| `src/app/(admin)/admin/reviews/page.tsx` | dropped the pending "requested for &lt;date&gt;" line; added a "no verified collection day" danger note |
-| `tests/unit/pricing.test.ts` | fixture updated + new trash/recycling sum test |
-| `tests/integration/onboarding-finalize.test.ts` | fixture updated to the new stage1/stage3 shape |
-
-### The schedule-row rule (most important logic — don't break it)
-`generateCyclesForDate` creates one cycle **per matching `collection_schedules` row**, so writing a
-second row when trash and recycling share a day would **double-book one real visit**.
-- Same day → exactly **one** row (`waste_stream='trash'`), every plan. Unchanged from before.
-- Different days + **Complete** (`collectionCoverage: 'all_regular_collection_days'`) → **two** rows.
-- Different days + **Home** (`one_regular_day_per_week`) → **trash row only**, plus an inline
-  factual note in the UI. No silent upgrade, no price change.
-- onDemand → always trash only.
-
-`collectionCoverage` already existed in `src/config/business.ts` but was **read nowhere** — this is
-the first thing that consumes it.
+`npm ci` was run here (the worktree had no `next` installed), and `.env.local` was copied from the other worktree.
 
 ---
 
-## 3. WHAT'S LEFT (pick up here)
+## 2. What shipped
 
-1. **Browser walkthrough of the new stage-3 sub-wizard** — never done. Four branches to check:
-   trash-only, same-day trash+recycling, different-day on Home (should show the coverage note),
-   different-day on Complete. Desktop *and* mobile (mobile is the owner's priority viewport).
-2. **Unit tests for `resolvePersona()`** — not written yet. Cover each servingWho/propertyType
-   pairing and the null/default case.
-3. **Integration coverage** for the schedule-row rule (Home vs Complete × same vs different day),
-   per-type bin counts, `property_type` persistence, and the computed onDemand date.
-4. **`tests/e2e/public-acquisition.spec.ts`** asserts on the old `forSomeoneElse` checkbox —
-   **will fail** until updated for the new persona question. Expected, not a regression.
-5. **Re-run** `npm test` + full Playwright suite.
-6. **Accessibility pass** on the rebuilt stage 3 — buttons are real `<button>`s with `aria-pressed`
-   and `min-h-[44px]`, but the axe pass over `/onboarding` hasn't been re-run.
-7. **`TODO.md`** — add a new ticket entry for this redesign (it's materially separate from PP-14,
-   which is already checked off).
+**D-027 auto-approval.** `finalizeOnboardingDraft` (`src/lib/onboarding.ts`) gained:
+```ts
+autoApprove = trashReviewReason === null && draft.commercial_check?.status === "residential"
+```
+True → `properties.status='active'`, `subscriptions.status='active'` or `orders.status='approved'` **plus `generateTasksForOrder()`** (parity with `decideOrderReview`), `service_confirmed` notification, and an `auditLog` entry with `actorId: null`. False → completely unchanged from before. Fails safe on any missing/failed/unrecognized state. Hazards never participate.
 
-### Known open risk (documented in the plan, worth watching)
-Stage 3 went from one scrolling form to ~13 one-question screens. More clicks, each easier. Draft
-resume persists `current_stage`, not sub-step, so an abandoned signup resumes at the *top* of stage 3.
-Persisting sub-step would change the draft API contract — deliberately out of scope.
+**D-025a — City lookup moved to stage 1.** New `onboarding_drafts.city_lookup` column (migration `20260805120000`). `verifyCollectionDay` was replaced by `lookupCityWeekday()` (raw I/O) + `combineDayCheck()` (pure classification), so the stage-3 route is now a read-combine-write with no live zone query. Two new `collection_day_check` statuses: `city_resolved` (unsure customer, City supplied the day — treated as verified) and `unsure_no_data` (nobody knows the day — proceeds, admin resolves).
+
+**Admin day resolution.** New `setCollectionDay` server action + inline weekday picker on any queue item missing a day. **Nothing in the app could set a collection day before this** — the "No verified collection day, approving will fail" warning was previously a dead end. Also: review-reason banners (city mismatch / manual-lookup-needed / non-residential) and a `commercial_check` join by account.
+
+**WM rejected.** Investigated live. `rest-api.wm.com/account/search` → `/services` → `/pickupinfo`, requires a Google Place ID (we use Mapbox), returns `401 UnauthorizedException` without an Okta token. It's an access-controlled private API returning third-party *customer account* records — categorically different from the City's open zone polygons. Owner chose manual admin lookup instead. Recorded as D-025a; **do not revisit without documented granted access from the hauler.**
 
 ---
 
-## 4. Environment notes
+## 3. Bug fixed in passing (important)
 
-- `.env.local` exists (gitignored) with local Supabase demo keys + a dev-only `ACCESS_SECRETS_KEY`.
-- Local Supabase was **stopped** at end of session. Restart: `npx supabase start`.
-- The migration is already applied to the local DB (via `npx supabase db reset`, which also reseeds).
-- For realistic dashboard data, run the e2e fixture provisioner — see the tsx one-liner pattern used
-  this session, or just run `npx playwright test` which provisions in `global-setup`.
-- Dev users, all password `devpassword123`: `admin@` / `runner@` / `customer@curbsitter.test`.
-- `node_modules` in this worktree was empty at session start — `npm install` was run. Turbopack
-  needs it locally; other tools were silently resolving from the parent checkout.
+`draftView` (`src/lib/onboarding.ts`) re-parsed `stage3` with `stage3Schema` *after* the PATCH route had split `accessSecretNotes` into the `access_secrets` column — so D-026's gate/garage minimum-length rule failed for **every gated property, at stage 3, before payment.** Signup was impossible for anyone with a gate or garage.
 
-## 5. Unrelated pre-existing bug (flagged, NOT fixed — out of scope)
+This is the same trap the last handoff flagged and fixed in `finalizeOnboardingDraft` — `draftView` was missed. **Any future stage3 validation touching `accessSecretNotes` must re-check both call sites.**
 
-`tests/integration/referrals.test.ts:84` asserts `amount_cents === 1000` ($10), but
-`src/config/business.ts:95-96` is `2000` ($20) — PP-05 reverted the credit amount on 2026-07-31 and
-this test was never updated. It fails on every `npm test` run. A background task chip was spawned
-for it (`task_5db3b98d`).
+---
+
+## 4. Public claims corrected
+
+Four places asserted every account is reviewed before first service, which D-027 makes false: `/terms` ("Serviceability review"), `src/app/(marketing)/faq/page.tsx`, `src/lib/personas.ts`, and the stage-4 onboarding review card. `/terms` also gained a **"Collection schedule accuracy"** section disclaiming liability for missed collection caused by inaccurate customer-supplied hauler/day info — no public source covers every address in Prescott or Yavapai County. An inline version of that disclaimer sits on the trash-day question.
+
+---
+
+## 5. Verified against live data
+
+Using the seeded eligibility check (133 S Cortez St):
+- Stage 1 wrote `city_lookup = {status:'found', cityWeekday:4}` (Thursday — matches the City).
+- The parcel check returned `{status:'flagged', usageType:'Qualified Exmpt', usageDesc:'9270-CHURCH, RELIG USE'}` — that address is a church, correctly **not** auto-approve-eligible.
+- API: unsure → `city_resolved`/4; day 4 → `match`; day 1 → `mismatch`.
+- Browser: "I'm not sure" advanced silently with the day filled in from City data; disclaimer renders; no console errors.
+
+---
+
+## 6. Known / not done
+
+- **PP-05 referral drift** — `tests/integration/referrals.test.ts:84` expects `1000`, `business.ts` says `2000`. Pre-existing, fails every run, tracked as `task_5db3b98d`. Don't chase.
+- **D-026 cleanup — done** (commit after `8bc5629`): hazards block + `property_hazards` join removed from the admin review page, `requiresAccessReview` retired end to end.
+- **D-024 — done** (`d250acc`). Floor confirmed at **2 days**. It governs both the displayed date and `generateTasksForOrder`'s booked date via one shared `firstPickupDate()`, so they can't diverge. Reschedule is deliberately unfloored.
+- **`ACCESS_SECRET_MIN_LENGTH = 10`** — still an arbitrary placeholder.
+- **A fail-open worth knowing:** a draft with no `collection_day_check` at all (private-hauler skip, or a failed check the client swallowed) plus a residential parcel **will auto-approve** on the customer's self-reported day. This is the approved design for private haulers, but a transient check failure lands in the same bucket. If that becomes a concern, the fix is a distinct `check_failed` status on `CityLookup`.
+- **Stage-1 latency** — draft creation now waits on a live ArcGIS parcel query (8s timeout, parallel with the zone lookup). Fast in practice; worst case adds real delay to the signup path.
+- The City ArcGIS reuse terms are still unconfirmed with City of Prescott Solid Waste.
+- Holiday collection shifts still unmodeled.
+
+---
+
+## 7. Environment
+
+- Local Supabase running; all migrations applied; 16 City zones cached.
+- **`service_confirmed` was inserted into `notification_templates` by hand** on this local DB, because the migration had already run before that insert was added to it. A fresh `supabase db reset` applies it properly. `notification_outbox.template_id` is a FK, so a missing template row silently drops the notification.
+- No Mapbox token, so a fresh address geocodes to null → `geocode_failed`. Use the seeded `eligibility_checks` row `11ef9ae2-edad-4898-bd68-c71002475809` (133 S Cortez St, City day = Thursday) to exercise real paths.
+- Dev users, password `devpassword123`: `admin@` / `runner@` / `customer@curbsitter.test`.
+- Dev server was stopped at end of session (PP-15).

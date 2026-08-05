@@ -23,9 +23,23 @@ export default function TermsPage() {
       </p>
       <h2>Serviceability review</h2>
       <p>
-        All new accounts are subject to property and route review before first service, even
-        after successful payment. If CurbSitter cannot serve a property, the customer receives a
-        prompt refund of unused charges or an alternative quote.
+        Accounts that clear CurbSitter&apos;s automated checks — a confirmed collection day and
+        an address that verifies as residential — are activated at signup. Accounts that do not
+        clear those checks, including a disputed collection day, an unconfirmed collection day,
+        or a property that does not verify as residential, are subject to property and route
+        review before first service, even after successful payment. If CurbSitter cannot serve a
+        property, the customer receives a prompt refund of unused charges or an alternative
+        quote.
+      </p>
+      <h2>Collection schedule accuracy</h2>
+      <p>
+        CurbSitter checks the collection day a customer provides against the City of Prescott&apos;s
+        published route records where those records cover the address. No public source lists
+        the hauler and collection day for every residential address in Prescott or elsewhere in
+        Yavapai County, so CurbSitter relies on the property information the customer supplies.
+        CurbSitter is not responsible for a missed collection resulting from inaccurate hauler,
+        collection-day, or property information provided by the customer. Customers can correct
+        their collection day at any time by contacting support.
       </p>
       <h2>Billing</h2>
       <p>

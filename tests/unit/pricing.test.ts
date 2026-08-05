@@ -10,6 +10,7 @@ function stage3(overrides: Partial<Stage3> = {}): Stage3 {
     hasBothBinTypes: false,
     trashBinCount: 2,
     recyclingBinCount: 0,
+    collectionProviderKind: "city",
     collectionProvider: "",
     collectionDay: 2,
     collectionDayUnsure: false,
@@ -51,17 +52,13 @@ describe("buildQuote", () => {
     expect(quote.billingInterval).toBeNull();
   });
 
-  it("flags access review for complex access instead of adding a surcharge", () => {
+  it("never lets hazards change the price", () => {
+    // No-surprise policy: complex access is an operational matter, never a
+    // silent surcharge. D-026 also removed the review flag it used to set,
+    // so the quote must now be identical in every respect.
     const base = buildQuote(stage3());
-    const gated = buildQuote(stage3({ hazards: ["gate", "steep_grade"] }));
-    expect(gated.requiresAccessReview).toBe(true);
-    // No-surprise policy: same price, review flag only.
-    expect(gated.amountDueCents).toBe(base.amountDueCents);
-  });
-
-  it("does not flag review for informational hazards", () => {
-    const quote = buildQuote(stage3({ hazards: ["poor_lighting", "ice"] }));
-    expect(quote.requiresAccessReview).toBe(false);
+    expect(buildQuote(stage3({ hazards: ["gate", "steep_grade"] }))).toEqual(base);
+    expect(buildQuote(stage3({ hazards: ["poor_lighting", "ice"] }))).toEqual(base);
   });
 
   it("reports bin-limit violations for the chosen plan", () => {

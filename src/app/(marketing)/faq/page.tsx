@@ -54,7 +54,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Is my payment taken before you confirm you can serve my property?",
-    a: "Payment sets up your account, but every property goes through a serviceability review before the first service. If we can't serve your property, our policy is a prompt refund or an alternative quote.",
+    a: "Payment sets up your account. If your collection day and address check out, service starts right away; if anything needs a closer look, we review the property before the first service. If we can't serve your property, our policy is a prompt refund or an alternative quote.",
   },
 ];
 

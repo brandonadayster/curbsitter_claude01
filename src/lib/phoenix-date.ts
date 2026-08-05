@@ -40,3 +40,46 @@ export function nextOccurrenceOfWeekday(weekday: number, fromDateExclusive: stri
   from.setUTCDate(from.getUTCDate() + delta);
   return from.toISOString().slice(0, 10);
 }
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00${PHOENIX_OFFSET}`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The first pickup date for a property we've never visited (D-024), honouring
+ * a minimum lead time. Rollout is the evening before collection, so without a
+ * floor the soonest occurrence can demand same-evening rollout at a property
+ * whose access nobody has confirmed.
+ *
+ * Callers pass `leadDays` from `SERVICE_WINDOWS.firstPickupLeadDays` — this
+ * module stays a config-free leaf so it remains safe in the client bundle.
+ *
+ * Both the displayed date and the booked date come from here, so a customer
+ * is never shown one date and scheduled another.
+ */
+export function firstPickupDate(
+  weekday: number,
+  fromDateExclusive: string,
+  leadDays: number,
+): string {
+  const earliest = addDays(fromDateExclusive, leadDays);
+  let date = nextOccurrenceOfWeekday(weekday, fromDateExclusive);
+  // ISO YYYY-MM-DD compares lexicographically. A loop rather than a single
+  // bump so this stays correct if the floor ever exceeds a week.
+  while (date < earliest) {
+    date = nextOccurrenceOfWeekday(weekday, date);
+  }
+  return date;
+}
+
+/** A collection date as "Thursday, August 7" in Phoenix time. */
+export function formatPhoenixDate(date: string): string {
+  return new Date(`${date}T12:00:00${PHOENIX_OFFSET}`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Phoenix",
+  });
+}

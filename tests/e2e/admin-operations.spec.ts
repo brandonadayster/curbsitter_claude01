@@ -145,3 +145,77 @@ test("admin approves a one-time onDemand order and it generates the visit tasks"
     await db.from("orders").delete().eq("id", orderId);
   }
 });
+
+/**
+ * D-025 revision / D-027: a customer who didn't know their collection day and
+ * whose address the City doesn't cover still completes signup — the day is
+ * resolved here, by hand, from the hauler's own schedule tool. Without this
+ * control the property has no weekday, so no visit could ever be scheduled.
+ */
+test("admin resolves an unknown collection day from the review queue", async ({ page }) => {
+  const db = adminClient();
+  const orderId = "e2e00000-0000-4000-8000-0000000000b4";
+
+  // Put the shared fixture property into the "nobody knows the day" state.
+  await db
+    .from("collection_schedules")
+    .update({ weekday: null, verification_status: "needs_review", needs_review_reason: "customer_unsure" })
+    .eq("id", E2E.scheduleId);
+  await db.from("orders").insert({
+    id: orderId,
+    account_id: E2E.accountId,
+    property_id: E2E.propertyId,
+    status: "requested",
+  });
+
+  try {
+    await page.goto("/admin/reviews");
+    const card = page.locator("li").filter({ hasText: E2E.address }).filter({ hasText: /CurbSitter onDemand/ });
+    await expect(card).toBeVisible();
+
+    // The reviewer is told what to do, not just that something is wrong.
+    await expect(card.getByText(/look it up in the hauler's own schedule tool/i)).toBeVisible();
+
+    await card.getByLabel(/collection day/i).selectOption("5");
+    await card.getByPlaceholder(/e\.g\. WM/i).fill("WM");
+    await card.getByRole("button", { name: /save day/i }).click();
+
+    await expect
+      .poll(async () => {
+        const { data } = await db
+          .from("collection_schedules")
+          .select("weekday, verification_status, needs_review_reason, provider")
+          .eq("id", E2E.scheduleId)
+          .single();
+        return data;
+      })
+      .toMatchObject({
+        weekday: 5,
+        verification_status: "verified",
+        needs_review_reason: null,
+        provider: "WM",
+      });
+
+    // With a day on file the order is now approvable, which it wasn't before.
+    await card.getByRole("button", { name: /^Approve$/ }).click();
+    await expect
+      .poll(async () => {
+        const { data } = await db.from("orders").select("status").eq("id", orderId).single();
+        return data?.status;
+      })
+      .toBe("scheduled");
+  } finally {
+    await db.from("service_tasks").delete().eq("order_id", orderId);
+    await db.from("orders").delete().eq("id", orderId);
+    // Restore the shared fixture for other specs.
+    await db
+      .from("collection_schedules")
+      .update({
+        weekday: 3,
+        verification_status: "verified",
+        needs_review_reason: null,
+        provider: "City of Prescott",
+      })
+      .eq("id", E2E.scheduleId);
+  }
+});
