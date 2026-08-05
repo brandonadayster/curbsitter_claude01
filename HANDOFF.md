@@ -1,112 +1,79 @@
-# Session handoff — D-024 / D-025 / D-026 / D-027 (continued)
+# Session handoff — D-027 landed
 
-**Date:** 2026-08-04
-**Branch:** `claude/next-agenda-item-3accc3` (worktree `next-agenda-item-3accc3`)
-**Last commit:** `e4fb70f` — "PP-21 follow-ons: pickup-date groundwork, City day verification, hazard-review removal"
-**State:** lint ✅ · typecheck ✅ · 89/90 tests ✅ (one known pre-existing failure, see §6) · working tree clean · **everything below is committed**
+**Date:** 2026-08-05
+**Branch:** `claude/d-027-continuation-67fcdc` (worktree `d-027-continuation-67fcdc`)
+**Last commit:** `8bc5629` — "D-027: auto-approve clean signups; D-025 lookup moves to stage 1"
+**State:** lint ✅ · typecheck ✅ · 107/108 unit+integration ✅ · 50/50 e2e ✅ · working tree clean
 
-**Approved plan lives at `/home/brandon/.claude/plans/synthetic-mixing-bear.md` — read it first.** This doc records what actually landed, what changed vs. that plan, and what's left.
-
----
-
-## 1. The four decisions (all in `DECISION_REGISTER.md` except D-027)
-
-- **D-024** — show customers a confirmed *pickup date*, not just a weekday, for subscriptions and onDemand. Reuses PP-14's "pickup date" + rollout-evening-confirmation copy pattern. **Not yet built.**
-- **D-025** — auto-verify collection day against the City of Prescott's public ArcGIS layer. **Built and verified.**
-- **D-026** — admin stops reviewing hazard/access flags; schema validation replaces it. **Mostly built** (schema + onboarding UI done; admin UI removal and `requiresAccessReview` retirement still pending).
-- **D-027** — **narrows D-018.** Clean signups (collection day not a disputed conflict + property confirmed residential) activate immediately with no admin click. Anything else still queues for review. Hazards do *not* gate this. **Not yet built, and its register entry is NOT yet written.**
-
-D-027 is the one that delivers the actual customer-facing payoff (paid → confirmed, instead of paid → silence), which is why it's next up rather than D-024.
+Plan: `/home/brandon/.claude/plans/clever-humming-diffie.md`. Prior plan (D-024/025/026 context): `/home/brandon/.claude/plans/synthetic-mixing-bear.md`.
 
 ---
 
-## 2. What's built and verified
+## 1. Branch note (read first)
 
-### D-025 — collection-day verification (complete)
-| File | What it is |
-| --- | --- |
-| `supabase/migrations/20260804120000_city_route_day_zones.sql` | Cache table for the City's 16 route-day polygons. Service-role only, no RLS policies (same posture as `property_access_secrets`). |
-| `supabase/migrations/20260804120100_collection_day_verification.sql` | Adds `needs_review_reason` + `city_weekday` to `collection_schedules`; `collection_day_check` + `commercial_check` jsonb to `onboarding_drafts`. |
-| `scripts/sync-city-route-days.mjs` | Fetches the ArcGIS layer with `outSR=4326&f=geojson` (server-side reprojection — no coordinate-transform code needed). Upserts, *then* deletes stale rows. Writes nothing on a failed/malformed fetch. |
-| `.github/workflows/sync-city-route-days.yml` | Monthly cron + `workflow_dispatch`. **Needs real prod `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` secrets before it can run.** |
-| `src/lib/geocode.ts` | `geocode()` extracted out of `eligibility.ts` (pure refactor, no behavior change). |
-| `src/lib/collection-day-verification.ts` | `verifyCollectionDay()` — reads *our cache*, never the live endpoint at signup. Returns match / mismatch / no_zone_data. Also exports the `CollectionDayCheck` type. |
-| `src/app/api/onboarding/draft/[token]/collection-day-check/route.ts` | POST runs the check; PATCH records a customer keeping their own answer. |
+This branch was created from `main`, not from the D-025/D-026 work, so it originally lacked every prerequisite. It was **rebased onto `claude/next-agenda-item-3accc3`** (tip `715ac82`) at the start of this session. Both branches now share history up to `715ac82`; this branch adds `8bc5629` on top. `claude/next-agenda-item-3accc3` has *not* been updated — don't work in both.
 
-**Verified end-to-end against live City data** (browser + direct API): match auto-advances, mismatch shows the conflict card with both resolutions working, private hauler skips entirely, geocode failure blocks.
-
-### Provider question reordered (NEW — not in the original plan)
-Owner asked mid-session to swap questions 5 and 6. Provider now comes **before** the day question and is **click-to-answer** (`City of Prescott` / `A private hauler` / `I'm not sure`), with an optional free-text hauler name shown only for "private."
-
-Why it matters: a private-hauler property now **skips the City check entirely** rather than being shown a conflict about a hauler that isn't theirs. Verified: private hauler + Monday (City says Thursday) → advances clean, no card, no check recorded.
-
-Added `collectionProviderKind` to `stage3Schema`. Dropped the stale "Patriot Disposal" placeholder — that company was acquired by WM.
-
-### D-026 — partially built
-- `stage3Schema.superRefine` now requires access notes ≥ `ACCESS_SECRET_MIN_LENGTH` when `gate`/`garage` is flagged (client + server, same schema).
-- Access step label no longer says "Optional"; finally renders its `<Err>`.
-
-### PP-21 leftovers (all done)
-`tests/unit/personas.test.ts` (10), `tests/integration/onboarding-schedule-rows.test.ts` (15), `tests/e2e/onboarding-a11y.spec.ts` + `.mobile.spec.ts` — full onboarding flow scans clean at WCAG 2.2 AA on both viewports.
+`npm ci` was run here (the worktree had no `next` installed), and `.env.local` was copied from the other worktree.
 
 ---
 
-## 3. Bug found and fixed (worth knowing — the pattern will recur)
+## 2. What shipped
 
-D-026's new validation broke `finalizeOnboardingDraft`: it re-parses `draft.stage3` with `stage3Schema`, but the PATCH route **deliberately strips `accessSecretNotes` into the separate `access_secrets` column** (the security rule working as designed). So the new gate/garage requirement saw an empty value and threw — meaning **every gated property would fail to finalize *after paying*.**
+**D-027 auto-approval.** `finalizeOnboardingDraft` (`src/lib/onboarding.ts`) gained:
+```ts
+autoApprove = trashReviewReason === null && draft.commercial_check?.status === "residential"
+```
+True → `properties.status='active'`, `subscriptions.status='active'` or `orders.status='approved'` **plus `generateTasksForOrder()`** (parity with `decideOrderReview`), `service_confirmed` notification, and an `auditLog` entry with `actorId: null`. False → completely unchanged from before. Fails safe on any missing/failed/unrecognized state. Hazards never participate.
 
-Fixed by reassembling the logical stage3 before parsing (`src/lib/onboarding.ts` ~line 99). The existing integration test caught this. **If you add any further stage3 validation touching `accessSecretNotes`, re-check this path.**
+**D-025a — City lookup moved to stage 1.** New `onboarding_drafts.city_lookup` column (migration `20260805120000`). `verifyCollectionDay` was replaced by `lookupCityWeekday()` (raw I/O) + `combineDayCheck()` (pure classification), so the stage-3 route is now a read-combine-write with no live zone query. Two new `collection_day_check` statuses: `city_resolved` (unsure customer, City supplied the day — treated as verified) and `unsure_no_data` (nobody knows the day — proceeds, admin resolves).
 
----
+**Admin day resolution.** New `setCollectionDay` server action + inline weekday picker on any queue item missing a day. **Nothing in the app could set a collection day before this** — the "No verified collection day, approving will fail" warning was previously a dead end. Also: review-reason banners (city mismatch / manual-lookup-needed / non-residential) and a `commercial_check` join by account.
 
-## 4. WHAT'S LEFT (recommended order)
-
-1. **D-027 auto-approve branch** in `finalizeOnboardingDraft` — the payoff piece.
-   - `autoApprove = collection_day_check.status !== 'mismatch'/'mismatch_confirmed' && commercial_check.status === 'residential'`. Everything defaults to *needs review* on any missing/failed/unrecognized state. Hazards are **not** part of this condition.
-   - True → `properties.status='active'`, `subscriptions.status='active'` or `orders.status='approved'` (order *scheduling* still happens later via the unchanged `generateTasksForOrder` — this only skips the manual approval).
-   - False → unchanged from today.
-2. **Wire the commercial check into stage-1 draft creation** (`src/app/api/onboarding/draft/route.ts`) — `checkPropertyUsage()` already exists and is verified working; it just isn't called anywhere yet. Store into `onboarding_drafts.commercial_check`.
-3. **`notifications.ts` → new `service_confirmed` case.** Do *not* reuse `review_approved` — its copy says "your property passed review," which implies a human acted. New copy: service is active, next trash day visible in the dashboard.
-4. **D-024 pickup-date display + lead-time floor** — `nextOccurrenceOfWeekday` (already pure/client-safe) computed at display time, deliberately *not* a new stored field. Floor bumps the shown date if the next occurrence is too soon for a never-visited property.
-5. **Admin review UI** (`src/app/(admin)/admin/reviews/page.tsx`) — remove the "Flags:" hazards block (both copies) and drop `property_hazards` from both `select()`s; add the mismatch banner (`needs_review_reason` = `city_mismatch` vs `customer_unsure`) and a commercial-flag banner.
-6. **Retire `requiresAccessReview`** across `pricing.ts`, `onboarding-flow.tsx`, `onboarding.ts`, `tests/unit/pricing.test.ts`. Confirmed safe: the `welcome_pending_review` email template (`notifications.ts:38`) just drops a conditional sentence — no template rewrite needed.
-7. **Write the D-027 register entry** + annotate D-018 as "(narrowed 2026-08-04, see D-027)" + add the retired-decisions line. Draft copy is in the plan file.
-8. **Remaining tests** — unit (`onboarding-schemas`, `collection-day-verification`, `property-usage-check`), integration (all `collection_day_check` × `commercial_check` combinations, sync upsert/delete semantics with mocked fetch), e2e (conflict states, admin queue, service-confirmed flow).
-9. **`TODO.md`** — add a ticket entry for this whole body of work.
+**WM rejected.** Investigated live. `rest-api.wm.com/account/search` → `/services` → `/pickupinfo`, requires a Google Place ID (we use Mapbox), returns `401 UnauthorizedException` without an Okta token. It's an access-controlled private API returning third-party *customer account* records — categorically different from the City's open zone polygons. Owner chose manual admin lookup instead. Recorded as D-025a; **do not revisit without documented granted access from the hauler.**
 
 ---
 
-## 5. Decisions made mid-session (beyond the plan file)
+## 3. Bug fixed in passing (important)
 
-- **Recycling day is explicitly out of scope** for verification — the City's data models one day per zone, and legitimate exceptions exist. Recycling stays pure self-report.
-- **Admin approval stays one-click on a mismatch** — banner for visibility, no blocking checkbox.
-- **`requiresAccessReview` gets retired entirely** (not kept as informational copy).
-- **`USAGE_TYPE` classification** (from the 24 real values in county data): residential = `Residential`, `Duplex`, `Triplex`, `Mobile Home`, `MH Affixed`. Everything else — including `Multi-Res` and `MH/RV Park` (usually managed multi-unit with centralized service) and anything unrecognized — flags for review.
-- **`mismatch` vs `mismatch_confirmed`** are distinct statuses. Only `match` and `no_zone_data` are auto-approve-eligible.
+`draftView` (`src/lib/onboarding.ts`) re-parsed `stage3` with `stage3Schema` *after* the PATCH route had split `accessSecretNotes` into the `access_secrets` column — so D-026's gate/garage minimum-length rule failed for **every gated property, at stage 3, before payment.** Signup was impossible for anyone with a gate or garage.
 
-### Still unconfirmed (placeholders in code)
-- `ACCESS_SECRET_MIN_LENGTH = 10` — arbitrary, needs a real number + matching error copy.
-- **Lead-time floor** for D-024 — proposed 2 days, never confirmed.
+This is the same trap the last handoff flagged and fixed in `finalizeOnboardingDraft` — `draftView` was missed. **Any future stage3 validation touching `accessSecretNotes` must re-check both call sites.**
 
 ---
 
-## 6. Environment notes
+## 4. Public claims corrected
 
-- Local Supabase **is running**; both new migrations applied; 16 City zones synced (`npm run sync:city-route-days`, idempotent, safe to re-run).
-- **No Mapbox token in `.env.local`** — so `geocode()` returns null and a fresh address hits `geocode_failed`. To test the real paths, seed coordinates:
-  - Already seeded: `eligibility_checks` id `11ef9ae2-edad-4898-bd68-c71002475809` = 133 S Cortez St, lat `34.5406286821427`, lon `-112.468507978073`. **The City says Thursday (weekday 4) for this address** — pick anything else to trigger a mismatch.
-  - Test draft token: `718a7d2a8cbe303567b245f04ffa1733b9f608b72f5a4266` (currently mid-stage-3; reset its `collection_day_check`/`stage3` to replay).
+Four places asserted every account is reviewed before first service, which D-027 makes false: `/terms` ("Serviceability review"), `src/app/(marketing)/faq/page.tsx`, `src/lib/personas.ts`, and the stage-4 onboarding review card. `/terms` also gained a **"Collection schedule accuracy"** section disclaiming liability for missed collection caused by inaccurate customer-supplied hauler/day info — no public source covers every address in Prescott or Yavapai County. An inline version of that disclaimer sits on the trash-day question.
+
+---
+
+## 5. Verified against live data
+
+Using the seeded eligibility check (133 S Cortez St):
+- Stage 1 wrote `city_lookup = {status:'found', cityWeekday:4}` (Thursday — matches the City).
+- The parcel check returned `{status:'flagged', usageType:'Qualified Exmpt', usageDesc:'9270-CHURCH, RELIG USE'}` — that address is a church, correctly **not** auto-approve-eligible.
+- API: unsure → `city_resolved`/4; day 4 → `match`; day 1 → `mismatch`.
+- Browser: "I'm not sure" advanced silently with the day filled in from City data; disclaimer renders; no console errors.
+
+---
+
+## 6. Known / not done
+
+- **PP-05 referral drift** — `tests/integration/referrals.test.ts:84` expects `1000`, `business.ts` says `2000`. Pre-existing, fails every run, tracked as `task_5db3b98d`. Don't chase.
+- **D-026 cleanup — done** (commit after `8bc5629`): hazards block + `property_hazards` join removed from the admin review page, `requiresAccessReview` retired end to end.
+- **D-024 (pickup date display + lead-time floor)** — still not built. Next up. `nextOccurrenceOfWeekday` is already pure/client-safe; the proposed 2-day floor was never confirmed.
+- **`ACCESS_SECRET_MIN_LENGTH = 10`** — still an arbitrary placeholder.
+- **A fail-open worth knowing:** a draft with no `collection_day_check` at all (private-hauler skip, or a failed check the client swallowed) plus a residential parcel **will auto-approve** on the customer's self-reported day. This is the approved design for private haulers, but a transient check failure lands in the same bucket. If that becomes a concern, the fix is a distinct `check_failed` status on `CityLookup`.
+- **Stage-1 latency** — draft creation now waits on a live ArcGIS parcel query (8s timeout, parallel with the zone lookup). Fast in practice; worst case adds real delay to the signup path.
+- The City ArcGIS reuse terms are still unconfirmed with City of Prescott Solid Waste.
+- Holiday collection shifts still unmodeled.
+
+---
+
+## 7. Environment
+
+- Local Supabase running; all migrations applied; 16 City zones cached.
+- **`service_confirmed` was inserted into `notification_templates` by hand** on this local DB, because the migration had already run before that insert was added to it. A fresh `supabase db reset` applies it properly. `notification_outbox.template_id` is a FK, so a missing template row silently drops the notification.
+- No Mapbox token, so a fresh address geocodes to null → `geocode_failed`. Use the seeded `eligibility_checks` row `11ef9ae2-edad-4898-bd68-c71002475809` (133 S Cortez St, City day = Thursday) to exercise real paths.
 - Dev users, password `devpassword123`: `admin@` / `runner@` / `customer@curbsitter.test`.
-- Dev server was left running on :3000 — **stop it if not needed** (PP-15 standing practice).
-
-## 7. Known pre-existing failure (not ours, don't chase it)
-
-`tests/integration/referrals.test.ts:84` expects `amount_cents === 1000` but `business.ts` says `2000` — PP-05 reverted the credit to $20 on 2026-07-31 and the test was never updated. Fails on every run. Background task `task_5db3b98d` already tracks it.
-
-## 8. Open items deferred to their own future work
-
-- **Multi-property signup** ("Add another property" pre-payment, multi-property rate). Owner likes the idea; needs its own plan + a pricing decision entry. Note: persona copy *already claims* "one account can manage multiple properties," so this closes a real promise gap.
-- **HOA/Enterprise property-count threshold** — the "5 or 10 properties" cutoff is **not coded anywhere**; `COMMUNITY_PORTFOLIO` in `business.ts` only has `pricing: custom_quote`.
-- **Holiday collection shifts** — the City shifts days for holidays via per-holiday toggles on their residential-collection page, which the ArcGIS layer does *not* model. Our synced day will be wrong those weeks. Not handled; needs its own approach.
-- **Maps** (subdivision/HOA boundaries, City day layer, heatmap) — deferred conversation. Key facts: no Mapbox token configured; PP-11 (Yavapai County parcel ingestion into `route_cells.geometry`) is the real prerequisite and is plan-mode gated; a heatmap was already explicitly rejected in `docs/adr/0002` in favor of native Mapbox GL clustering (PP-07).
-- **City ArcGIS reuse terms** — the City publishes no explicit license. Confirm with City of Prescott Solid Waste before relying on the sync in production.
+- Dev server was stopped at end of session (PP-15).

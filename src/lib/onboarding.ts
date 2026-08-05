@@ -422,7 +422,7 @@ export async function finalizeOnboardingDraft(options: {
     template_id: autoApprove ? "service_confirmed" : "welcome_pending_review",
     channel: "email",
     recipient: payerEmail,
-    payload: { account_id: account.id, requires_access_review: quote.requiresAccessReview },
+    payload: { account_id: account.id },
   });
 
   // 9. Mark the draft finalized (idempotency anchor).

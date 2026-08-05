@@ -50,7 +50,6 @@ interface Quote {
   description: string;
   amountDueCents: number;
   recurrence: "monthly" | "quarterly" | "one_time";
-  requiresAccessReview: boolean;
   binLimitOk: boolean;
 }
 
@@ -1276,12 +1275,6 @@ export function OnboardingFlow({
                     <p role="alert" className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-base font-medium text-danger">
                       Your bin count exceeds this plan&apos;s limit — go back and adjust the plan
                       or bin count.
-                    </p>
-                  ) : null}
-                  {quote.requiresAccessReview ? (
-                    <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base text-warning">
-                      Your property access needs a quick review before first service. If anything
-                      changes the price, we&apos;ll show you first — no surprise charges.
                     </p>
                   ) : null}
                   {dayCheck === "unsure_no_data" ? (

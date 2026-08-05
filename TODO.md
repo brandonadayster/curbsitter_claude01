@@ -332,9 +332,15 @@ Mobile is the priority viewport per the owner.
   coverage for every `collection_day_check` × `commercial_check` combination through
   `finalizeOnboardingDraft`, including one-time-order auto-approval reaching `scheduled` with
   tasks generated, and `setCollectionDay` clearing the review reason.
-  Known, deliberately out of scope: the admin review page still renders the "Flags:" hazards
-  block that D-026 retired (pre-existing, tracked separately), and `requiresAccessReview` is
-  still live.
+- [x] D-026 cleanup: finish retiring admin hazard review (2026-08-05). The decision was locked
+  and the schema half shipped, but the UI and the flag it drove were still in place. Removed the
+  "Flags:" block and the `property_hazards` join from both lists on the admin review page, and
+  retired `requiresAccessReview` end to end (`pricing.ts`, `onboarding-flow.tsx`, the
+  `welcome_pending_review` payload and its conditional sentence in `notifications.ts`).
+  Hazards are untouched everywhere they still matter — the runner task view, the customer's own
+  property page, and the `property_hazards` write at finalize.
+  `tests/unit/pricing.test.ts`'s two flag assertions collapse into one that asserts the stronger
+  property: hazards never change the quote *at all* now, not just the price.
 
 ## Current ticket
 

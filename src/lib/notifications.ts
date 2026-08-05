@@ -35,7 +35,6 @@ function renderTemplate(templateId: string | null, payload: Record<string, unkno
         subject: "Welcome to CurbSitter — property review in progress",
         text:
           "Thanks for signing up. Your payment went through and your account is now pending a quick property and route review before your first service is scheduled. We'll email you as soon as it's approved." +
-          (payload.requires_access_review ? " We may follow up about property access first." : "") +
           sign,
       };
     // D-027: a clean signup activates with no human in the loop, so this

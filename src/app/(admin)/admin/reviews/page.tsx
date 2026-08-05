@@ -124,7 +124,6 @@ export default async function ReviewsPage() {
         `id, plan_id, billing_interval, created_at, account_id,
          properties (id, address_line1, address_line2, city, postal_code,
            property_instructions (bin_storage_location, curb_placement_notes),
-           property_hazards (hazard_type, severity),
            collection_schedules (weekday, provider, verification_status, needs_review_reason, city_weekday, waste_stream),
            bins (id)),
          accounts (name)`,
@@ -137,7 +136,6 @@ export default async function ReviewsPage() {
         `id, requested_date, created_at, account_id,
          properties (id, address_line1, address_line2, city, postal_code,
            property_instructions (bin_storage_location, curb_placement_notes),
-           property_hazards (hazard_type, severity),
            collection_schedules (weekday, provider, verification_status, needs_review_reason, city_weekday, waste_stream),
            bins (id)),
          accounts (name)`,
@@ -193,7 +191,6 @@ export default async function ReviewsPage() {
               : subscription.accounts;
             const instructions = property?.property_instructions?.[0] ?? property?.property_instructions;
             const schedules = (property?.collection_schedules ?? []) as ScheduleRow[];
-            const hazards = property?.property_hazards ?? [];
             const commercialCheck = subscription.account_id
               ? (commercialByAccount.get(subscription.account_id) ?? null)
               : null;
@@ -234,14 +231,6 @@ export default async function ReviewsPage() {
                             .join(", ")
                         : "—"}
                     </p>
-                    {hazards.length > 0 ? (
-                      <p className="mt-1 text-base">
-                        <span className="text-muted">Flags:</span>{" "}
-                        {hazards
-                          .map((hazard: { hazard_type: string }) => hazard.hazard_type.replace(/_/g, " "))
-                          .join(", ")}
-                      </p>
-                    ) : null}
                     <ReviewReasons schedules={schedules} commercialCheck={commercialCheck} />
                     {needsDay && property?.id ? (
                       <SetCollectionDayForm propertyId={property.id} />
@@ -296,7 +285,6 @@ export default async function ReviewsPage() {
             const account = Array.isArray(order.accounts) ? order.accounts[0] : order.accounts;
             const instructions = property?.property_instructions?.[0] ?? property?.property_instructions;
             const schedules = (property?.collection_schedules ?? []) as ScheduleRow[];
-            const hazards = property?.property_hazards ?? [];
             const commercialCheck = order.account_id
               ? (commercialByAccount.get(order.account_id) ?? null)
               : null;
@@ -342,14 +330,6 @@ export default async function ReviewsPage() {
                     {needsDay ? (
                       <p className="mt-1 text-base text-danger">
                         No verified collection day — approving will fail until the day is set below.
-                      </p>
-                    ) : null}
-                    {hazards.length > 0 ? (
-                      <p className="mt-1 text-base">
-                        <span className="text-muted">Flags:</span>{" "}
-                        {hazards
-                          .map((hazard: { hazard_type: string }) => hazard.hazard_type.replace(/_/g, " "))
-                          .join(", ")}
                       </p>
                     ) : null}
                     <ReviewReasons schedules={schedules} commercialCheck={commercialCheck} />

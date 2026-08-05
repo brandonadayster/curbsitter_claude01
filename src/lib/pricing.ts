@@ -3,13 +3,15 @@ import type { Stage3 } from "@/lib/onboarding-schemas";
 
 /**
  * Server-side quote calculation. The client never supplies totals
- * (API_CONTRACT.md), and complexity never creates silent surcharges — it can
- * only flag the property for review before activation (no-surprise policy,
- * PROJECT_TRUTH.md pricing guardrail).
+ * (API_CONTRACT.md), and complexity never creates silent surcharges
+ * (no-surprise policy, PROJECT_TRUTH.md pricing guardrail).
+ *
+ * D-026 retired the access-review flag this used to compute: a desk review
+ * could never verify a gate code before a runner was on site. Access detail
+ * quality is enforced by schema validation at onboarding instead, and
+ * anything found at the property is handled by the runner and the existing
+ * exception tooling.
  */
-
-/** Hazards that trigger an access review instead of an automatic price change. */
-const REVIEW_HAZARDS = new Set(["steep_grade", "long_driveway", "gate", "garage", "access_restriction"]);
 
 export interface Quote {
   serviceChoice: "home" | "complete" | "one_time_trash_day";
@@ -17,12 +19,10 @@ export interface Quote {
   description: string;
   amountDueCents: number;
   recurrence: "monthly" | "quarterly" | "one_time";
-  requiresAccessReview: boolean;
   binLimitOk: boolean;
 }
 
 export function buildQuote(stage3: Stage3): Quote {
-  const requiresAccessReview = stage3.hazards.some((hazard) => REVIEW_HAZARDS.has(hazard));
   const totalBins = stage3.trashBinCount + stage3.recyclingBinCount;
 
   if (stage3.serviceChoice === "one_time_trash_day") {
@@ -32,7 +32,6 @@ export function buildQuote(stage3: Stage3): Quote {
       description: ONE_TIME.trashDayPublicName,
       amountDueCents: ONE_TIME.trashDayPriceCents,
       recurrence: "one_time",
-      requiresAccessReview,
       binLimitOk: totalBins <= ONE_TIME.trashDayIncludedBins,
     };
   }
@@ -50,7 +49,6 @@ export function buildQuote(stage3: Stage3): Quote {
         : `${plan.publicName} — quarterly, prepaid (billed every 3 months)`,
     amountDueCents: getPlanPriceCents(planId, interval),
     recurrence: interval,
-    requiresAccessReview,
     binLimitOk: totalBins <= plan.maxBins,
   };
 }
