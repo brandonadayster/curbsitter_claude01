@@ -4,10 +4,22 @@ import { PropertyPinMap } from "@/components/map/property-pin-map";
 import { getSessionInfo } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { RescheduleForm } from "./reschedule-form";
+
 export const metadata = { title: "Your Account" };
 export const dynamic = "force-dynamic";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  requested: "Waiting on property and route review",
+  quoted: "Awaiting your approval",
+  approved: "Approved — scheduling your visit",
+  scheduled: "Scheduled",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  declined: "Declined",
+};
 
 const CYCLE_LABELS: Record<string, string> = {
   planned: "Planned",
@@ -27,23 +39,32 @@ export default async function CustomerHomePage() {
   const supabase = await createSupabaseServerClient();
 
   // All reads are RLS-scoped to the signed-in customer's accounts.
-  const [{ data: properties }, { data: subscriptions }, { data: upcoming }] = await Promise.all([
-    supabase
-      .from("properties")
-      .select(
-        "id, address_line1, address_line2, city, postal_code, status, latitude, longitude, collection_schedules(weekday, verification_status)",
-      )
-      .order("created_at"),
-    supabase
-      .from("subscriptions")
-      .select("id, status, plan_id, billing_interval, cancel_at_period_end, property_id"),
-    supabase
-      .from("collection_cycles")
-      .select("id, collection_date, state, properties(address_line1)")
-      .gte("collection_date", new Date().toISOString().slice(0, 10))
-      .order("collection_date")
-      .limit(5),
-  ]);
+  const [{ data: properties }, { data: subscriptions }, { data: upcoming }, { data: orders }] =
+    await Promise.all([
+      supabase
+        .from("properties")
+        .select(
+          "id, address_line1, address_line2, city, postal_code, status, latitude, longitude, collection_schedules(weekday, verification_status)",
+        )
+        .order("created_at"),
+      supabase
+        .from("subscriptions")
+        .select("id, status, plan_id, billing_interval, cancel_at_period_end, property_id"),
+      supabase
+        .from("collection_cycles")
+        .select("id, collection_date, state, properties(address_line1)")
+        .gte("collection_date", new Date().toISOString().slice(0, 10))
+        .order("collection_date")
+        .limit(5),
+      supabase
+        .from("orders")
+        .select(
+          `id, status, requested_date, properties(address_line1),
+           service_tasks(id, status, route_id)`,
+        )
+        .not("status", "in", "(completed,cancelled,declined)")
+        .order("created_at"),
+    ]);
 
   return (
     <>
@@ -82,6 +103,43 @@ export default async function CustomerHomePage() {
           </ul>
         )}
       </section>
+
+      {orders && orders.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="text-2xl font-bold">Your one-time service</h2>
+          <ul className="mt-3 space-y-3">
+            {orders.map((order) => {
+              const property = Array.isArray(order.properties) ? order.properties[0] : order.properties;
+              const tasks = order.service_tasks ?? [];
+              const canReschedule =
+                order.status === "scheduled" &&
+                tasks.length > 0 &&
+                tasks.every((task) => task.status === "scheduled" && task.route_id === null);
+              return (
+                <li key={order.id} className="rounded-2xl border border-border bg-surface p-5">
+                  <p className="text-lg font-semibold">
+                    {order.requested_date ?? "Date pending"} — {property?.address_line1}
+                  </p>
+                  <p className="mt-1 text-base text-muted">
+                    {ORDER_STATUS_LABELS[order.status] ?? order.status}
+                  </p>
+                  {canReschedule ? (
+                    <RescheduleForm orderId={order.id} currentDate={order.requested_date!} />
+                  ) : order.status === "scheduled" ? (
+                    <p className="mt-2 text-base text-muted">
+                      Your route for this service date has already been finalized, so this visit
+                      can no longer be rescheduled online.
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-sm text-muted">
+                    We require 24 hours or more advance notice for schedule changes.
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-8">
         <h2 className="text-2xl font-bold">Your properties</h2>

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { phoenixTimestamp, phoenixWeekday, previousDay } from "@/lib/phoenix-date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -9,26 +10,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * (property, schedule, date) unique constraint.
  *
  * Service windows come from BUSINESS_CONFIG: rollout 5–10 p.m. the evening
- * before, return after collection on pickup day. America/Phoenix has no DST,
- * so a fixed -07:00 offset is correct year-round.
+ * before, return after collection on pickup day.
  */
 
-const PHOENIX_OFFSET = "-07:00";
-
-function phoenixTimestamp(date: string, time: string): string {
-  return `${date}T${time}:00${PHOENIX_OFFSET}`;
-}
-
-function previousDay(date: string): string {
-  const d = new Date(`${date}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-export function phoenixWeekday(date: string): number {
-  // Weekday of the calendar date in Phoenix; noon UTC avoids boundary issues.
-  return new Date(`${date}T12:00:00${PHOENIX_OFFSET}`).getUTCDay();
-}
+export { phoenixWeekday };
 
 export interface GenerationResult {
   cyclesCreated: number;

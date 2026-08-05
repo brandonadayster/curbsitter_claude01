@@ -7,11 +7,15 @@ function stage3(overrides: Partial<Stage3> = {}): Stage3 {
   return {
     serviceChoice: "home",
     billingInterval: "monthly",
-    binCount: 2,
-    binTypes: ["trash"],
+    hasBothBinTypes: false,
+    trashBinCount: 2,
+    recyclingBinCount: 0,
     collectionProvider: "",
     collectionDay: 2,
     collectionDayUnsure: false,
+    sameDayCollection: null,
+    recyclingCollectionDay: null,
+    recyclingCollectionDayUnsure: false,
     binStorageLocation: "Side yard by the gate",
     curbPlacementNotes: "",
     hazards: [],
@@ -61,10 +65,19 @@ describe("buildQuote", () => {
   });
 
   it("reports bin-limit violations for the chosen plan", () => {
-    expect(buildQuote(stage3({ binCount: 4 })).binLimitOk).toBe(false);
-    expect(buildQuote(stage3({ serviceChoice: "complete", binCount: 4 })).binLimitOk).toBe(true);
+    expect(buildQuote(stage3({ trashBinCount: 4 })).binLimitOk).toBe(false);
+    expect(buildQuote(stage3({ serviceChoice: "complete", trashBinCount: 4 })).binLimitOk).toBe(true);
     expect(
-      buildQuote(stage3({ serviceChoice: "one_time_trash_day", binCount: 4 })).binLimitOk,
+      buildQuote(stage3({ serviceChoice: "one_time_trash_day", trashBinCount: 4 })).binLimitOk,
+    ).toBe(false);
+  });
+
+  it("sums trash and recycling counts against the plan's bin limit", () => {
+    expect(
+      buildQuote(stage3({ hasBothBinTypes: true, trashBinCount: 2, recyclingBinCount: 1 })).binLimitOk,
+    ).toBe(true);
+    expect(
+      buildQuote(stage3({ hasBothBinTypes: true, trashBinCount: 2, recyclingBinCount: 2 })).binLimitOk,
     ).toBe(false);
   });
 });

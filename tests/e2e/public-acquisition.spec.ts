@@ -43,10 +43,12 @@ test("visitor can join the waitlist and receives a personal share link", async (
 test("onboarding supports buying for someone else and reveals recipient fields", async ({ page }) => {
   await page.goto("/onboarding");
 
-  // Stage 1: address + "someone else".
+  // Stage 1: address, persona (anything but "Myself" reveals stage 2's
+  // recipient section), and property type — both are click-to-answer buttons.
   await page.getByLabel("Service street address").fill("200 Gift St");
   await page.getByLabel("ZIP code").fill("86303");
-  await page.getByLabel(/someone else/i).check();
+  await page.getByRole("button", { name: "A parent or family member" }).click();
+  await page.getByRole("button", { name: "Single-family home" }).click();
   await page.getByRole("button", { name: /continue/i }).click();
 
   // Stage 2: recipient section appears because the service is for someone else.

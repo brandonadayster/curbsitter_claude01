@@ -218,8 +218,41 @@ Mobile is the priority viewport per the owner.
   group by until the attribution column exists. Also includes the mockup's density-by-route
   chart with a dashed breakeven line (renders the `PROJECT_TRUTH.md` route-density rule as a
   glanceable pass/fail).
-- [ ] PP-14 Self-serve reschedule and per-visit skip in the customer portal (the only real gaps
-  against the document's customer-dashboard checklist).
+- [x] PP-14 Self-serve reschedule for CurbSitter onDemand orders (2026-08-02). **Scope changed
+  on owner clarification:** subscriptions run on one fixed weekday per route cell
+  (`PROJECT_TRUTH.md`), so a generic "move my visit" control isn't physically meaningful there
+  — pause/resume (P5-04) already covers "skip an upcoming visit" for subscriptions. Owner
+  confirmed reschedule applies only to the one-time onDemand order, with auto-approval gated on
+  whether that order's route has been built yet (technical equivalent of "24+ hours notice,
+  unless tomorrow's route isn't set").
+  Investigating turned up P6-02 was never finished past the checkout capacity gate: no date was
+  ever collected or stored, no admin review path existed for `orders` (`/admin/reviews` only
+  queried `subscriptions`), nothing generated `service_tasks` for an order, and customers had no
+  way to see a one-time order anywhere in the portal. Fixed all of it under this ticket (owner
+  chose not to split it out) — no schema migration needed, `orders.requested_date` already
+  existed as an unused column.
+  New: `src/lib/orders.ts` (`generateTasksForOrder`, `rescheduleOrder`), `src/lib/phoenix-date.ts`
+  (pure date helpers extracted from `cycles.ts` so `onboarding-schemas.ts` can use them without
+  pulling `server-only` into the client bundle), an orders review queue on `/admin/reviews`, a
+  "Your one-time service" section + reschedule form on `/app`, and an orders section on
+  `/app/history`. Onboarding stage 3 collects a requested date for onDemand, validated against
+  the property's verified collection weekday both client- and server-side. The requested date
+  is always the pickup/collection date (matching `collection_schedules.weekday`, the same
+  anchor `generateCyclesForDate` already uses) — rollout is *always* computed as the evening
+  before, never asked for directly. The first copy draft ("What date do you need this
+  service?") didn't make that distinction explicit and a manual walkthrough during review hit
+  the resulting confusion firsthand; both the onboarding field and the portal reschedule field
+  now say "pickup date" and show a live confirmation of which evening bins go out.
+  Tests: 6 new integration tests (`tests/integration/order-generation.test.ts`) covering
+  weekday-mismatch rejection, idempotent generation, and the reschedule auto-approve/blocked
+  gate; 3 new Playwright specs (order review approve, reschedule allowed, reschedule blocked) —
+  all run against a real local Supabase stack and pass, along with the full existing desktop e2e
+  suite (33/33) and the manual onboarding-form walkthrough. Order lifecycle intentionally stops
+  at `scheduled` — auto-flipping to `completed` when its tasks finish would touch the shared
+  runner-completion path (`src/lib/tasks.ts`) and is a natural follow-up, not built here.
+  Found and flagged (not fixed, out of scope) a pre-existing stale assertion in
+  `tests/integration/referrals.test.ts` still expecting the $10 credit amount PP-05 reverted to
+  $20 on 2026-07-31.
 - [ ] PP-15 Ongoing: before/after each work session, check for and stop any background
   processes (dev servers, watch tasks, agents) not currently needed, to conserve resources.
   Standing practice per owner request 2026-07-31, not a one-time item.
@@ -228,4 +261,4 @@ Mobile is the priority viewport per the owner.
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-04`
+`CURRENT: PP-14`

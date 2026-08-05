@@ -1,5 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { TaskCard } from "./task-card";
+
 export const metadata = { title: "Service History" };
 export const dynamic = "force-dynamic";
 
@@ -16,20 +18,40 @@ const STATE_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const ORDER_STATE_LABELS: Record<string, string> = {
+  completed: "Completed",
+  cancelled: "Cancelled",
+  declined: "Declined",
+};
+
 export default async function HistoryPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data: cycles } = await supabase
-    .from("collection_cycles")
-    .select(
-      `id, collection_date, state,
-       properties (address_line1),
-       service_tasks (id, task_type, status, completed_at,
-         service_photos (id, photo_type, taken_at),
-         exceptions (id, exception_type, description, status, resolution, customer_visible))`,
-    )
-    .order("collection_date", { ascending: false })
-    .limit(20);
+  const [{ data: cycles }, { data: orders }] = await Promise.all([
+    supabase
+      .from("collection_cycles")
+      .select(
+        `id, collection_date, state,
+         properties (address_line1),
+         service_tasks (id, task_type, status, completed_at,
+           service_photos (id, photo_type, taken_at),
+           exceptions (id, exception_type, description, status, resolution, customer_visible))`,
+      )
+      .order("collection_date", { ascending: false })
+      .limit(20),
+    supabase
+      .from("orders")
+      .select(
+        `id, requested_date, status,
+         properties (address_line1),
+         service_tasks (id, task_type, status, completed_at,
+           service_photos (id, photo_type, taken_at),
+           exceptions (id, exception_type, description, status, resolution, customer_visible))`,
+      )
+      .in("status", ["completed", "cancelled", "declined"])
+      .order("requested_date", { ascending: false })
+      .limit(20),
+  ]);
 
   return (
     <>
@@ -66,77 +88,54 @@ export default async function HistoryPage() {
                 <p className="mt-1 text-base text-muted">{property?.address_line1}</p>
 
                 <ul className="mt-4 space-y-3">
-                  {tasks.map((task) => {
-                    const photos = (task.service_photos ?? []).filter((photo: { photo_type: string }) =>
-                      ["rollout_proof", "return_proof", "exception"].includes(photo.photo_type),
-                    );
-                    const visibleExceptions = (task.exceptions ?? []).filter(
-                      (exception: { customer_visible: boolean }) => exception.customer_visible,
-                    );
-                    return (
-                      <li key={task.id} className="rounded-xl border border-border bg-surface-2 p-4">
-                        <p className="text-lg font-semibold capitalize">
-                          {task.task_type}{" "}
-                          <span className="font-normal text-muted">
-                            — {task.status.replace(/_/g, " ")}
-                            {task.completed_at
-                              ? ` at ${new Date(task.completed_at).toLocaleTimeString("en-US", {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  timeZone: "America/Phoenix",
-                                })}`
-                              : ""}
-                          </span>
-                        </p>
-                        {photos.length > 0 ? (
-                          <p className="mt-2 text-base">
-                            {photos.map((photo: { id: string; photo_type: string }, index: number) => (
-                              <a
-                                key={photo.id}
-                                href={`/api/photos/${photo.id}/view`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mr-4 text-cyan underline"
-                              >
-                                View {photo.photo_type.replace(/_/g, " ")}
-                                {photos.length > 1 ? ` ${index + 1}` : ""}
-                              </a>
-                            ))}
-                          </p>
-                        ) : null}
-                        {visibleExceptions.map(
-                          (exception: {
-                            id: string;
-                            exception_type: string;
-                            description: string | null;
-                            status: string;
-                            resolution: string | null;
-                          }) => (
-                            <div
-                              key={exception.id}
-                              className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base"
-                            >
-                              <p>
-                                <strong>{exception.exception_type.replace(/_/g, " ")}</strong>
-                                {exception.description ? ` — ${exception.description}` : ""}
-                              </p>
-                              {exception.status === "resolved" && exception.resolution ? (
-                                <p className="mt-1 text-muted">Resolution: {exception.resolution}</p>
-                              ) : (
-                                <p className="mt-1 text-muted">Our team is on it.</p>
-                              )}
-                            </div>
-                          ),
-                        )}
-                      </li>
-                    );
-                  })}
+                  {tasks.map((task) => (
+                    <TaskCard key={task.id} task={task} />
+                  ))}
                 </ul>
               </li>
             );
           })}
         </ul>
       )}
+
+      {orders && orders.length > 0 ? (
+        <>
+          <h2 className="mt-10 text-2xl font-bold">One-time onDemand orders</h2>
+          <ul className="mt-6 space-y-5">
+            {orders.map((order) => {
+              const property = Array.isArray(order.properties) ? order.properties[0] : order.properties;
+              const tasks = order.service_tasks ?? [];
+              return (
+                <li key={order.id} className="rounded-2xl border border-border bg-surface p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-xl font-bold">
+                      {order.requested_date
+                        ? new Date(`${order.requested_date}T12:00:00-07:00`).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                            timeZone: "America/Phoenix",
+                          })
+                        : "Date not set"}
+                    </h3>
+                    <span className="rounded-full border border-border px-3 py-1 text-base text-muted">
+                      {ORDER_STATE_LABELS[order.status] ?? order.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-base text-muted">{property?.address_line1}</p>
+
+                  <ul className="mt-4 space-y-3">
+                    {tasks.map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
     </>
   );
 }

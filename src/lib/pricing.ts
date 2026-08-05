@@ -23,6 +23,7 @@ export interface Quote {
 
 export function buildQuote(stage3: Stage3): Quote {
   const requiresAccessReview = stage3.hazards.some((hazard) => REVIEW_HAZARDS.has(hazard));
+  const totalBins = stage3.trashBinCount + stage3.recyclingBinCount;
 
   if (stage3.serviceChoice === "one_time_trash_day") {
     return {
@@ -32,7 +33,7 @@ export function buildQuote(stage3: Stage3): Quote {
       amountDueCents: ONE_TIME.trashDayPriceCents,
       recurrence: "one_time",
       requiresAccessReview,
-      binLimitOk: stage3.binCount <= ONE_TIME.trashDayIncludedBins,
+      binLimitOk: totalBins <= ONE_TIME.trashDayIncludedBins,
     };
   }
 
@@ -50,6 +51,6 @@ export function buildQuote(stage3: Stage3): Quote {
     amountDueCents: getPlanPriceCents(planId, interval),
     recurrence: interval,
     requiresAccessReview,
-    binLimitOk: stage3.binCount <= plan.maxBins,
+    binLimitOk: totalBins <= plan.maxBins,
   };
 }

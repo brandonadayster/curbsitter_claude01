@@ -99,3 +99,49 @@ test("admin sets a route cell's map center point and it persists", async ({ page
   // Clean up so this test is idempotent against a re-run.
   await db.from("route_cells").update({ center_latitude: null, center_longitude: null }).eq("id", cell!.id);
 });
+
+/**
+ * PP-14 prerequisite (finishes P6-02): a one-time CurbSitter onDemand order
+ * goes through the same serviceability review as subscriptions, and
+ * approving it generates the rollout/return visit tasks.
+ */
+test("admin approves a one-time onDemand order and it generates the visit tasks", async ({ page }) => {
+  const db = adminClient();
+  const orderId = "e2e00000-0000-4000-8000-0000000000b3";
+  await db.from("orders").insert({
+    id: orderId,
+    account_id: E2E.accountId,
+    property_id: E2E.propertyId,
+    status: "requested",
+  });
+
+  try {
+    await page.goto("/admin/reviews");
+    await expect(page.getByRole("heading", { name: /one-time ondemand orders/i })).toBeVisible();
+
+    // Pending orders no longer display a customer-supplied date (signup only
+    // asks for a collection day; the actual date is derived at approval), so
+    // the card is matched on address alone — unique among this test's fixtures.
+    const card = page.locator("li").filter({ hasText: E2E.address }).filter({ hasText: /CurbSitter onDemand/ });
+    await expect(card).toBeVisible();
+    await card.getByRole("button", { name: /^Approve$/ }).click();
+
+    await expect(card).toBeHidden();
+
+    await expect
+      .poll(async () => {
+        const { data } = await db.from("orders").select("status").eq("id", orderId).single();
+        return data?.status;
+      })
+      .toBe("scheduled");
+
+    const { count } = await db
+      .from("service_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("order_id", orderId);
+    expect(count).toBe(2);
+  } finally {
+    await db.from("service_tasks").delete().eq("order_id", orderId);
+    await db.from("orders").delete().eq("id", orderId);
+  }
+});
