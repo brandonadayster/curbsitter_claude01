@@ -1,9 +1,9 @@
-# Session handoff — D-027 landed
+# Session handoff — D-024/025/026/027 all landed
 
 **Date:** 2026-08-05
 **Branch:** `claude/d-027-continuation-67fcdc` (worktree `d-027-continuation-67fcdc`)
-**Last commit:** `8bc5629` — "D-027: auto-approve clean signups; D-025 lookup moves to stage 1"
-**State:** lint ✅ · typecheck ✅ · 107/108 unit+integration ✅ · 50/50 e2e ✅ · working tree clean
+**Last commit:** `d250acc` — "D-024: show a real pickup date at signup, floored for first visits"
+**State:** lint ✅ · typecheck ✅ · 119/120 unit+integration ✅ · 50/50 e2e ✅ · pushed, PR #13 open
 
 Plan: `/home/brandon/.claude/plans/clever-humming-diffie.md`. Prior plan (D-024/025/026 context): `/home/brandon/.claude/plans/synthetic-mixing-bear.md`.
 
@@ -61,7 +61,7 @@ Using the seeded eligibility check (133 S Cortez St):
 
 - **PP-05 referral drift** — `tests/integration/referrals.test.ts:84` expects `1000`, `business.ts` says `2000`. Pre-existing, fails every run, tracked as `task_5db3b98d`. Don't chase.
 - **D-026 cleanup — done** (commit after `8bc5629`): hazards block + `property_hazards` join removed from the admin review page, `requiresAccessReview` retired end to end.
-- **D-024 (pickup date display + lead-time floor)** — still not built. Next up. `nextOccurrenceOfWeekday` is already pure/client-safe; the proposed 2-day floor was never confirmed.
+- **D-024 — done** (`d250acc`). Floor confirmed at **2 days**. It governs both the displayed date and `generateTasksForOrder`'s booked date via one shared `firstPickupDate()`, so they can't diverge. Reschedule is deliberately unfloored.
 - **`ACCESS_SECRET_MIN_LENGTH = 10`** — still an arbitrary placeholder.
 - **A fail-open worth knowing:** a draft with no `collection_day_check` at all (private-hauler skip, or a failed check the client swallowed) plus a residential parcel **will auto-approve** on the customer's self-reported day. This is the approved design for private haulers, but a transient check failure lands in the same bucket. If that becomes a concern, the fix is a distinct `check_failed` status on `CityLookup`.
 - **Stage-1 latency** — draft creation now waits on a live ArcGIS parcel query (8s timeout, parallel with the zone lookup). Fast in practice; worst case adds real delay to the signup path.
