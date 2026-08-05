@@ -83,6 +83,6 @@ For every behavior change, test the happy path and the most expensive failure pa
 
 1. Run formatting, lint, typecheck, unit tests, integration tests, and relevant e2e tests.
 2. Inspect the diff for leaked secrets, fake content, changed business rules, and accessibility regressions.
-3. Update `TODO.md` and documentation.
+3. Update `TODO.md` and documentation incrementally, in the same commit as the code each entry describes — not batched at the end, where an interrupted session loses them.
 4. Commit with the ticket ID and a plain description.
 5. Summarize what changed, what was tested, and any remaining risk.
