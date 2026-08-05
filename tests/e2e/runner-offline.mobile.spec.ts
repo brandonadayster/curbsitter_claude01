@@ -75,6 +75,15 @@ test("a photo captured with no signal is queued on the device, not lost", async 
   await expect(page.getByText(/proof photo uploaded/i)).toBeHidden();
 });
 
+/**
+ * Signal returning *immediately* is the case that matters and the one that
+ * used to break. A failed capture backs off before it is eligible for an
+ * automatic retry, and nothing schedules a drain later — so when the queue
+ * only drained on a backoff-respecting pass, signal returning inside that
+ * window left the photo stuck behind a "Retry now" tap the UI never asked
+ * for. Restoring the connection right away, with no artificial wait, is what
+ * keeps that honest; a slower test would pass either way.
+ */
 test("the queue drains itself when signal returns", async ({ page }) => {
   await signIn(page, DEV_USERS.runner.email);
   await page.goto(`/runner/tasks/${E2E.mobileTaskId}`);
@@ -94,6 +103,22 @@ test("the queue drains itself when signal returns", async ({ page }) => {
   await expect(page.getByText(/saved on this device, waiting to upload/i)).toBeHidden({
     timeout: 15_000,
   });
+
+  // And it actually reached the server, rather than the banner merely
+  // clearing — that distinction is the whole point of this queue. Checked
+  // server-side because the task screen doesn't re-render its proof
+  // indicator after a background drain (a separate UX gap, not this queue's
+  // contract).
+  const db = adminClient();
+  await expect
+    .poll(async () => {
+      const { count } = await db
+        .from("service_photos")
+        .select("id", { count: "exact", head: true })
+        .eq("task_id", E2E.mobileTaskId);
+      return count ?? 0;
+    })
+    .toBe(1);
 });
 
 test("the route list reports queued work instead of looking clean", async ({ page }) => {

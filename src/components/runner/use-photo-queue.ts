@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 import {
   enqueue,
@@ -151,8 +151,21 @@ export function usePhotoQueue(): PhotoQueueApi {
     void reload();
   }, []);
 
+  // Regaining signal is better information than the backoff timer, the same
+  // way a runner tapping "Retry now" is. The backoff exists to stop us
+  // hammering a server that keeps failing — it should not hold a photo back
+  // when the reason it failed (no signal) has demonstrably just gone away.
+  //
+  // Without this, a capture that failed once sits until `capturedAt + 5s`,
+  // and since nothing schedules a later drain, signal returning inside that
+  // window left the photo queued indefinitely — waiting on a manual tap the
+  // UI never asked for. Only a genuine offline -> online transition forces;
+  // an already-online mount still respects the backoff.
+  const wasOnline = useRef(online);
   useEffect(() => {
-    if (online) void drain(false);
+    const cameOnline = online && !wasOnline.current;
+    wasOnline.current = online;
+    if (online) void drain(cameOnline);
   }, [online]);
 
   const capture = useCallback(
