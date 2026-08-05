@@ -1,7 +1,8 @@
 import "server-only";
 
+import { SERVICE_WINDOWS } from "@/config/business";
 import {
-  nextOccurrenceOfWeekday,
+  firstPickupDate,
   phoenixTimestamp,
   phoenixToday,
   phoenixWeekday,
@@ -105,17 +106,18 @@ async function insertOrderTasks(
 }
 
 /**
- * Generate the rollout/return service_tasks for a freshly admin-approved
- * one-time order. Unlike cycle generation (a manual, batched, multi-property
- * admin action), a one-time order is a single visit, so approval synchronously
- * creates its own tasks — no separate "generate" step. Idempotent: the
- * approved -> scheduled status transition is the gate, since a single order
- * has at most one active task pair.
+ * Generate the rollout/return service_tasks for an approved one-time order —
+ * either from the admin review screen or, under D-027, automatically at
+ * payment for a signup that cleared both checks. Unlike cycle generation (a
+ * manual, batched, multi-property admin action), a one-time order is a single
+ * visit, so approval synchronously creates its own tasks — no separate
+ * "generate" step. Idempotent: the approved -> scheduled status transition is
+ * the gate, since a single order has at most one active task pair.
  *
- * The visit date is *derived*, never customer-supplied: the next occurrence of
- * the property's trash collection day after approval. Signup only ever asks
- * which day of the week their trash runs; picking the actual date (and rolling
- * out the evening before) is ours to know.
+ * The visit date is *derived*, never customer-supplied: the first occurrence
+ * of the property's trash collection day that clears the D-024 lead-time
+ * floor. Signup only ever asks which day of the week their trash runs; picking
+ * the actual date (and rolling out the evening before) is ours to know.
  */
 export async function generateTasksForOrder(orderId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
@@ -132,7 +134,15 @@ export async function generateTasksForOrder(orderId: string): Promise<void> {
       "This property has no verified collection day yet, so a visit can't be scheduled.",
     );
   }
-  const collectionDate = nextOccurrenceOfWeekday(weekday, phoenixToday());
+  // D-024: the same computation onboarding shows the customer at signup, so
+  // the date they were quoted is the date that gets booked. Under D-027 a
+  // clean onDemand signup schedules seconds after that screen, which makes
+  // any divergence immediately visible.
+  const collectionDate = firstPickupDate(
+    weekday,
+    phoenixToday(),
+    SERVICE_WINDOWS.firstPickupLeadDays,
+  );
 
   // Claim the generation slot before writing tasks, so a duplicate call is a no-op.
   const { data: claimed, error: claimError } = await supabase

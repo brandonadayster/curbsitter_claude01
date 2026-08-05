@@ -118,6 +118,18 @@ test("no serious/critical a11y violations across the onboarding flow", async ({ 
 
   await test.step("stage 4 — review and activate", async () => {
     await expect(page.getByRole("heading", { name: /review and activate/i })).toBeVisible();
+
+    // D-024: a real pickup date, not just a weekday. This flow picked
+    // Wednesday, and the lead-time floor must never move the visit off the
+    // property's own collection day — so rollout is always the Tuesday before.
+    await expect(page.getByText(/Your first pickup: Wednesday, /)).toBeVisible();
+    // Rollout names the evening before the pickup, and the return promise
+    // stays on the card. The window label is built from config, so the
+    // regex also guards that seam against a lost or doubled separator.
+    await expect(
+      page.getByText(/evening before \(Tuesday, .+ p\.m\.\) and bring them back after collection\./),
+    ).toBeVisible();
+
     await assertNoSeriousViolations(page, "stage 4");
   });
 });

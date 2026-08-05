@@ -342,8 +342,32 @@ Mobile is the priority viewport per the owner.
   `tests/unit/pricing.test.ts`'s two flag assertions collapse into one that asserts the stronger
   property: hazards never change the quote *at all* now, not just the price.
 
+- [x] D-024 Pickup date at signup + first-visit lead-time floor (2026-08-05). Plan at
+  `/home/brandon/.claude/plans/clever-humming-diffie.md`. Last unbuilt piece of the
+  D-024/025/026/027 group. Stage 4 now shows "Your first pickup: {date}" with rollout as its own
+  sentence naming the evening before — never labeled a pickup date (D-024). Shown whenever a day
+  is known, including one the City resolved for an unsure customer; suppressed when no day exists,
+  where the existing "we'll confirm with your hauler" notice already covers it.
+  **Owner confirmed the lead-time floor at 2 days.** Because pickup recurs weekly the floor pushes
+  anyone whose day falls inside it to the following week, so 2 is the smallest value that avoids
+  same-evening rollout at a property no runner has visited.
+  **Behavior change, not just display:** `generateTasksForOrder` previously booked the raw next
+  occurrence with no floor. Under D-027 a clean onDemand signup schedules seconds after stage 4,
+  so a display-only floor would have shown one date and booked another. Both now come from the
+  same pure `firstPickupDate()`, so they cannot diverge. Reschedule is deliberately not floored —
+  it only moves an existing order later on an already-approved property.
+  New: `SERVICE_WINDOWS.firstPickupLeadDays`; `firstPickupDate()` and `formatPhoenixDate()` in
+  `src/lib/phoenix-date.ts` (the latter replacing one of the inlined date-format option bags in
+  the customer portal — the two in `history/` deliberately keep their year and were left alone).
+  Tests: 12 new unit tests pinning the floor arithmetic against fixed dates, including the
+  exact-boundary case (a day landing exactly on the floor must be allowed, not bumped — the
+  off-by-one that would silently cost every affected customer a week), month-boundary crossing,
+  and a floor longer than a week. One new integration assertion that a booked visit equals the
+  floored date. E2E asserts the date renders on desktop and is correctly absent on the
+  no-day mobile path.
+
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: D-027`
+`CURRENT: D-024`

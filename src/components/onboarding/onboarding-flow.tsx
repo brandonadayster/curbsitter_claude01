@@ -3,7 +3,19 @@
 import { useEffect, useState } from "react";
 
 import { PersonaPanel } from "@/components/onboarding/persona-panel";
-import { formatCents, ONE_TIME, PLANS, quarterlyMonthlyEquivalentCents } from "@/config/business";
+import {
+  formatCents,
+  ONE_TIME,
+  PLANS,
+  quarterlyMonthlyEquivalentCents,
+  SERVICE_WINDOWS,
+} from "@/config/business";
+import {
+  firstPickupDate,
+  formatPhoenixDate,
+  phoenixToday,
+  previousDay,
+} from "@/lib/phoenix-date";
 import {
   stage1Schema,
   stage2Schema,
@@ -245,6 +257,15 @@ function ContinueBar({
 }
 
 const STORAGE_PRESETS = ["Side yard", "In the garage", "Behind the gate", "Next to the driveway"];
+
+/** "5–10 p.m." derived from the configured 24-hour rollout window. */
+const hour12 = (local: string) => {
+  const hour = Number(local.slice(0, 2));
+  return hour > 12 ? hour - 12 : hour;
+};
+const ROLLOUT_WINDOW_LABEL = `${hour12(SERVICE_WINDOWS.rolloutStartLocal)}–${hour12(
+  SERVICE_WINDOWS.rolloutEndLocal,
+)} p.m.`;
 
 const HAZARD_OPTIONS: Array<[string, string]> = [
   ["long_driveway", "Long driveway"],
@@ -640,6 +661,14 @@ export function OnboardingFlow({
 
   const isLastStep3 = steps3.indexOf(stage3Step) === steps3.length - 1;
   const continueOrSubmit = (from: Step3) => () => (isLastStep3 ? submitStage3() : advance(from));
+
+  // D-024. Never a stored field — the same pure computation runs here and in
+  // `generateTasksForOrder`, so the date shown is the date booked. Stage 4 is
+  // only ever reached by interaction, so this never evaluates during SSR.
+  const firstPickup =
+    collectionDay === null
+      ? null
+      : firstPickupDate(collectionDay, phoenixToday(), SERVICE_WINDOWS.firstPickupLeadDays);
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
@@ -1283,9 +1312,22 @@ export function OnboardingFlow({
                       confirm it with your hauler before your first pickup and email you once
                       it&apos;s scheduled.
                     </p>
+                  ) : firstPickup !== null ? (
+                    /* D-024: the customer sees a real date, not just a weekday. Same
+                       computation the visit is booked from, so the two can't diverge.
+                       Rollout stays its own sentence and is never called a pickup date. */
+                    <div className="mt-3 rounded-lg border border-cyan/40 bg-cyan/5 px-4 py-3">
+                      <p className="text-lg font-semibold">
+                        Your first pickup: {formatPhoenixDate(firstPickup)}
+                      </p>
+                      <p className="mt-1 text-base text-muted">
+                        We roll your bins out the evening before (
+                        {formatPhoenixDate(previousDay(firstPickup))}, {ROLLOUT_WINDOW_LABEL}) and
+                        bring them back after collection. We&apos;ll confirm by email.
+                      </p>
+                    </div>
                   ) : null}
                   <p className="mt-3 text-base text-muted">
-                    Rollout the evening before collection (5–10 p.m.), return after collection.
                     If your collection day is confirmed and your address checks out as
                     residential, your service starts right away. If anything needs a closer
                     look, we&apos;ll review it before scheduling your first service — either way

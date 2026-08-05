@@ -115,6 +115,13 @@ test("no serious/critical a11y violations across the onboarding flow (mobile)", 
 
   await test.step("stage 4 — review and activate", async () => {
     await expect(page.getByRole("heading", { name: /review and activate/i })).toBeVisible();
+
+    // This flow answered "I'm not sure" on a private hauler, so no day is
+    // known. D-024 must not invent a pickup date here — the customer gets the
+    // honest "we'll confirm it" notice instead.
+    await expect(page.getByText(/Your first pickup:/)).toHaveCount(0);
+    await expect(page.getByText(/don't have a collection day on file/i)).toBeVisible();
+
     await assertNoSeriousViolations(page, "stage 4");
   });
 });

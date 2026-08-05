@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PropertyPinMap } from "@/components/map/property-pin-map";
 import { getSessionInfo } from "@/lib/auth";
+import { formatPhoenixDate } from "@/lib/phoenix-date";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { RescheduleForm } from "./reschedule-form";
@@ -85,13 +86,7 @@ export default async function CustomerHomePage() {
               return (
                 <li key={cycle.id} className="rounded-2xl border border-border bg-surface p-5">
                   <p className="text-lg font-semibold">
-                    {new Date(`${cycle.collection_date}T12:00:00-07:00`).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                      timeZone: "America/Phoenix",
-                    })}{" "}
-                    — {property?.address_line1}
+                    {formatPhoenixDate(cycle.collection_date)} — {property?.address_line1}
                   </p>
                   <p className="mt-1 text-base text-muted">
                     {CYCLE_LABELS[cycle.state] ?? cycle.state} · Rollout the evening before
