@@ -99,9 +99,19 @@ type ServiceChoice = "home" | "complete" | "one_time_trash_day";
  * trash-day question until the customer picks a resolution; `geocode_failed`
  * blocks entirely (no address to verify against). `no_zone_data` — the
  * property isn't on City service, most likely a private hauler — is the
- * common, unremarkable case and advances silently.
+ * common, unremarkable case and advances silently. `city_resolved` fills in
+ * the day for a customer who didn't know it; `unsure_no_data` means nobody
+ * knows it yet, so an admin confirms it before the first pickup.
  */
-type DayCheckState = "idle" | "checking" | "match" | "mismatch" | "no_zone_data" | "geocode_failed";
+type DayCheckState =
+  | "idle"
+  | "checking"
+  | "match"
+  | "mismatch"
+  | "no_zone_data"
+  | "city_resolved"
+  | "unsure_no_data"
+  | "geocode_failed";
 
 type ProviderKind = "city" | "private" | "unsure";
 
@@ -410,6 +420,50 @@ export function OnboardingFlow({
       // Verification is an enhancement, not a gate — a failed call must
       // never strand a paying customer mid-signup.
       setDayCheck("idle");
+      advance("trashDay");
+    }
+  }
+
+  /**
+   * "I'm not sure" — ask the City rather than giving up on the answer. A
+   * City record settles the day outright; without one, the signup still
+   * proceeds and an admin confirms the day before the first pickup.
+   */
+  async function runUnsureCheck() {
+    setCollectionDayUnsure(true);
+    setCollectionDay(null);
+
+    // A private hauler sets its own schedule, so City data can't answer this.
+    if (!token || collectionProviderKind === "private") {
+      setDayCheck("unsure_no_data");
+      advance("trashDay");
+      return;
+    }
+
+    setDayCheck("checking");
+    try {
+      const response = await fetch(`/api/onboarding/draft/${token}/collection-day-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) {
+        setDayCheck("unsure_no_data");
+        advance("trashDay");
+        return;
+      }
+      const data = (await response.json()) as { outcome: DayCheckState; cityWeekday: number | null };
+      setCityWeekday(data.cityWeekday);
+      setDayCheck(data.outcome);
+      if (data.outcome === "geocode_failed") return;
+      if (data.outcome === "city_resolved" && data.cityWeekday !== null) {
+        setCollectionDay(data.cityWeekday);
+        setCollectionDayUnsure(false);
+      }
+      advance("trashDay");
+    } catch {
+      // Verification is an enhancement, not a gate.
+      setDayCheck("unsure_no_data");
       advance("trashDay");
     }
   }
@@ -966,12 +1020,7 @@ export function OnboardingFlow({
                           setCollectionDayUnsure(false);
                           void runDayCheck(value);
                         }}
-                        onUnsure={() => {
-                          setCollectionDayUnsure(true);
-                          setCollectionDay(null);
-                          setDayCheck("idle");
-                          advance("trashDay");
-                        }}
+                        onUnsure={() => void runUnsureCheck()}
                       />
                     </div>
                     {dayCheck === "checking" ? (
@@ -980,6 +1029,15 @@ export function OnboardingFlow({
                       </p>
                     ) : null}
                     <Err message={fieldErrors.collectionDay} />
+                    <p className="mt-4 text-base text-muted">
+                      We check City of Prescott records where we can, but no public source
+                      lists the hauler and collection day for every property in Prescott or
+                      Yavapai County — so we rely on what you tell us. See our{" "}
+                      <a href="/terms" className="underline hover:text-text">
+                        Terms of Service
+                      </a>
+                      .
+                    </p>
                     {stepNav}
                   </>
                 )}
@@ -1226,10 +1284,19 @@ export function OnboardingFlow({
                       changes the price, we&apos;ll show you first — no surprise charges.
                     </p>
                   ) : null}
+                  {dayCheck === "unsure_no_data" ? (
+                    <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-base">
+                      We don&apos;t have a collection day on file for your address yet. We&apos;ll
+                      confirm it with your hauler before your first pickup and email you once
+                      it&apos;s scheduled.
+                    </p>
+                  ) : null}
                   <p className="mt-3 text-base text-muted">
                     Rollout the evening before collection (5–10 p.m.), return after collection.
-                    After payment your account is <strong>pending property and route review</strong>{" "}
-                    before the first service is scheduled.
+                    If your collection day is confirmed and your address checks out as
+                    residential, your service starts right away. If anything needs a closer
+                    look, we&apos;ll review it before scheduling your first service — either way
+                    we&apos;ll email you.
                   </p>
                 </div>
               ) : null}

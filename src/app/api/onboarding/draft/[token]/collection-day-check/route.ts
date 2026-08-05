@@ -2,29 +2,82 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { apiError, rateLimitedError, zodFieldErrors } from "@/lib/api";
-import { verifyCollectionDay, type CollectionDayCheck } from "@/lib/collection-day-verification";
+import {
+  combineDayCheck,
+  lookupCityWeekday,
+  type CityLookup,
+  type CollectionDayCheck,
+} from "@/lib/collection-day-verification";
 import { geocode } from "@/lib/geocode";
-import { loadDraftByToken } from "@/lib/onboarding";
+import { loadDraftByToken, type DraftRecord } from "@/lib/onboarding";
 import { limitPublic } from "@/lib/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * D-025: check a customer's stated trash-collection weekday against the
- * City of Prescott's cached route-day zones. POST runs the check; PATCH
- * records that the customer reaffirmed their own answer over a City
- * mismatch (the "No, it's mine" resolution) without re-checking.
+ * D-025: combine the customer's stated trash-collection weekday with the
+ * City route-day lookup already recorded at stage 1. POST runs the combine;
+ * PATCH records that the customer reaffirmed their own answer over a City
+ * mismatch (the "No, it's mine" resolution).
  *
- * `mismatch` (pending — the customer hasn't picked a resolution yet) and
- * `mismatch_confirmed` (the customer kept their own answer) are distinct
- * statuses. Re-picking the City's day instead just calls POST again, which
- * naturally comes back `match`. finalizeOnboardingDraft only ever treats
- * `match` and `no_zone_data` as auto-approve-eligible — everything else,
- * including a `mismatch` that was somehow never resolved, defaults to
- * human review.
+ * Omitting `weekday` means "I'm not sure" — the City's day is then adopted
+ * outright when one exists, and otherwise an admin resolves it by hand
+ * before the property can be approved.
+ *
+ * finalizeOnboardingDraft only treats `match` and `city_resolved` as a
+ * verified day; everything else — including a `mismatch` that was somehow
+ * never resolved — defaults to human review.
  */
 
-const postSchema = z.object({ weekday: z.number().int().min(0).max(6) });
+const postSchema = z.object({ weekday: z.number().int().min(0).max(6).optional() });
 const patchSchema = z.object({ confirmed: z.literal(true) });
+
+/**
+ * Stage 1 records `city_lookup` for every draft, so this is normally just a
+ * read. The live path covers drafts created before that column existed.
+ */
+async function resolveCityLookup(
+  supabase: SupabaseClient,
+  draft: DraftRecord,
+  checkedAt: string,
+): Promise<CityLookup> {
+  if (draft.city_lookup) return draft.city_lookup;
+  if (!draft.stage1) return { status: "geocode_failed", cityWeekday: null, checkedAt };
+
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  if (draft.eligibility_check_id) {
+    const { data: check } = await supabase
+      .from("eligibility_checks")
+      .select("latitude, longitude")
+      .eq("id", draft.eligibility_check_id)
+      .maybeSingle();
+    if (check?.latitude != null && check?.longitude != null) {
+      latitude = check.latitude;
+      longitude = check.longitude;
+    }
+  }
+  if (latitude === null || longitude === null) {
+    const geocoded = await geocode({
+      addressLine1: draft.stage1.addressLine1,
+      postalCode: draft.stage1.postalCode,
+    });
+    if (geocoded) {
+      latitude = geocoded.latitude;
+      longitude = geocoded.longitude;
+    }
+  }
+
+  if (latitude === null || longitude === null) {
+    return { status: "geocode_failed", cityWeekday: null, checkedAt };
+  }
+
+  // Not caught on purpose — see the same note in the stage-1 draft route.
+  const cityWeekday = await lookupCityWeekday(latitude, longitude);
+  return cityWeekday === null
+    ? { status: "not_found", cityWeekday: null, checkedAt }
+    : { status: "found", cityWeekday, checkedAt };
+}
 
 export async function POST(
   request: NextRequest,
@@ -60,50 +113,17 @@ export async function POST(
     return apiError(409, "stage1_missing", "Please complete the address step first.");
   }
 
-  // Prefer the coordinates already captured at address-check time (avoids a
-  // redundant Mapbox call); fall back to a fresh geocode otherwise.
-  let latitude: number | null = null;
-  let longitude: number | null = null;
-  if (draft.eligibility_check_id) {
-    const { data: check } = await supabase
-      .from("eligibility_checks")
-      .select("latitude, longitude")
-      .eq("id", draft.eligibility_check_id)
-      .maybeSingle();
-    if (check?.latitude != null && check?.longitude != null) {
-      latitude = check.latitude;
-      longitude = check.longitude;
-    }
-  }
-  if (latitude === null || longitude === null) {
-    const geocoded = await geocode({
-      addressLine1: draft.stage1.addressLine1,
-      postalCode: draft.stage1.postalCode,
-    });
-    if (geocoded) {
-      latitude = geocoded.latitude;
-      longitude = geocoded.longitude;
-    }
-  }
-
   const checkedAt = new Date().toISOString();
-  let check: CollectionDayCheck;
-
-  if (latitude === null || longitude === null) {
-    // Geocoding is treated as an unreliable external system (AGENTS.md) —
-    // this is the one outcome that blocks, since there's no address to
-    // verify anything against.
-    check = { status: "geocode_failed", customerWeekday: parsed.data.weekday, cityWeekday: null, checkedAt };
-  } else {
-    const outcome = await verifyCollectionDay(latitude, longitude, parsed.data.weekday);
-    if (outcome.status === "match") {
-      check = { status: "match", customerWeekday: parsed.data.weekday, cityWeekday: outcome.cityWeekday, checkedAt };
-    } else if (outcome.status === "mismatch") {
-      check = { status: "mismatch", customerWeekday: parsed.data.weekday, cityWeekday: outcome.cityWeekday, checkedAt };
-    } else {
-      check = { status: "no_zone_data", customerWeekday: parsed.data.weekday, cityWeekday: null, checkedAt };
-    }
+  let cityLookup: CityLookup;
+  try {
+    cityLookup = await resolveCityLookup(supabase, draft, checkedAt);
+  } catch (error) {
+    console.error("city lookup failed:", error instanceof Error ? error.message : error);
+    return apiError(503, "check_unavailable", "We couldn't check your collection day just now. Please try again.", {
+      retryable: true,
+    });
   }
+  const check = combineDayCheck(cityLookup, parsed.data.weekday ?? null, checkedAt);
 
   const { error } = await supabase
     .from("onboarding_drafts")
@@ -146,7 +166,7 @@ export async function PATCH(
     return apiError(409, "draft_finalized", "This signup is already complete.");
   }
 
-  const existing = draft.collection_day_check as CollectionDayCheck | null;
+  const existing = draft.collection_day_check;
   if (!existing || existing.status !== "mismatch") {
     return apiError(409, "no_pending_mismatch", "There's no collection-day conflict to confirm.");
   }

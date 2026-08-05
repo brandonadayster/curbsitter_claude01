@@ -299,8 +299,45 @@ Mobile is the priority viewport per the owner.
   a customer-facing conflict-confirmation flow on mismatch; drop admin hazard/access review in
   favor of schema-enforced non-empty access notes plus runner + exception tooling.
 
+- [x] D-027 Auto-approval for clean signups, plus the D-025 stage-1 lookup revision (2026-08-04).
+  Plan at `/home/brandon/.claude/plans/clever-humming-diffie.md`. Builds directly on the
+  D-025/D-026 work committed under the PP-21 follow-ons. The payoff: a signup that clears both
+  automated checks — collection day settled **and** parcel records confirm residential — now
+  activates at payment instead of leaving the customer paid-then-silent. Everything else still
+  queues for admin, so the review queue only ever contains items with a stated reason.
+  Owner decisions made during planning: (1) an unknown collection day never auto-approves — a
+  null weekday breaks `generateTasksForOrder` and would show a subscriber "confirmed" with no
+  real schedule; (2) the City lookup moved to stage 1, so an "I'm not sure" answer is resolved
+  from data already on hand, and the City's day becomes the property's day; (3) **automating
+  WM's pickup-schedule lookup was rejected** — it's an access-controlled private API (HTTP 401
+  without an Okta token, keyed by Google Place ID) returning third-party customer *account*
+  records, unlike the City's open route-day zone polygons. An unsure customer with no City
+  coverage is no longer turned away: signup completes and an admin resolves the day by hand from
+  the hauler's own public tool. See `DECISION_REGISTER.md` D-027 and D-025a.
+  New: `supabase/migrations/20260805120000_stage1_city_lookup.sql`
+  (`onboarding_drafts.city_lookup`); `lookupCityWeekday()` + `combineDayCheck()` in
+  `src/lib/collection-day-verification.ts` (replacing `verifyCollectionDay` — the I/O now happens
+  once at stage 1 and the stage-3 route is a pure combine); `setCollectionDay` server action in
+  `src/app/(admin)/admin/reviews/actions.ts` with an inline weekday picker on any queue item
+  missing a day (nothing in the app could set a collection day before this, which is what made
+  the manual-lookup fallback viable); `service_confirmed` notification template. `auditLog`'s
+  `actorId` widened to `string | null` for the first system-initiated entry.
+  Also corrected two now-inaccurate public claims: `/terms` no longer says *all* accounts are
+  reviewed before first service, and gained a "Collection schedule accuracy" section disclaiming
+  liability for missed collection caused by inaccurate customer-supplied hauler/day information
+  (no public source covers every address in Prescott or Yavapai County). The stage-4 onboarding
+  review card carried the same stale "pending property and route review" promise and was updated
+  to match.
+  Tests: unit coverage for `combineDayCheck`'s full matrix and `lookupCityWeekday`; integration
+  coverage for every `collection_day_check` × `commercial_check` combination through
+  `finalizeOnboardingDraft`, including one-time-order auto-approval reaching `scheduled` with
+  tasks generated, and `setCollectionDay` clearing the review reason.
+  Known, deliberately out of scope: the admin review page still renders the "Flags:" hazards
+  block that D-026 retired (pre-existing, tracked separately), and `requiresAccessReview` is
+  still live.
+
 ## Current ticket
 
 Set exactly one current ticket here before an agent begins:
 
-`CURRENT: PP-21`
+`CURRENT: D-027`

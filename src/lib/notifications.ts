@@ -38,6 +38,15 @@ function renderTemplate(templateId: string | null, payload: Record<string, unkno
           (payload.requires_access_review ? " We may follow up about property access first." : "") +
           sign,
       };
+    // D-027: a clean signup activates with no human in the loop, so this
+    // deliberately doesn't reuse review_approved's "passed review" wording.
+    case "service_confirmed":
+      return {
+        subject: "You're all set — CurbSitter service is active",
+        text:
+          "Thanks for signing up. Your service is active — you'll see your next scheduled trash day in your dashboard, and you'll get a photo confirmation after every visit." +
+          sign,
+      };
     case "review_approved":
       return {
         subject: "You're approved — CurbSitter service is on",

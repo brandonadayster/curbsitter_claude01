@@ -60,11 +60,23 @@ test("no serious/critical a11y violations across the onboarding flow (mobile)", 
   await page.getByRole("button", { name: "1", exact: true }).click();
   await page.getByRole("button", { name: "1", exact: true }).click(); // recyclingCount
 
+  // Provider comes before the day questions. A private hauler is trusted
+  // outright (D-025a), so the City cross-check never runs for this path.
+  await test.step("stage 3 — provider (Choice, single-select)", async () => {
+    await expect(page.getByRole("heading", { name: /who collects your trash/i })).toBeVisible();
+    await assertNoSeriousViolations(page, "stage 3: provider");
+  });
+  await page.getByRole("button", { name: "A private hauler" }).click();
+  await page.getByRole("button", { name: /continue/i }).click();
+
   await test.step("stage 3 — trashDay (DayPicker)", async () => {
     await expect(page.getByRole("heading", { name: /what day is your trash picked up/i })).toBeVisible();
+    await expect(page.getByText(/no public source lists the hauler and collection day/i)).toBeVisible();
     await assertNoSeriousViolations(page, "stage 3: trashDay");
   });
-  await page.getByRole("button", { name: "Wednesday" }).click();
+  // D-025a: "I'm not sure" on a private hauler leaves nobody knowing the day,
+  // so the signup proceeds and an admin resolves it — it must not dead-end.
+  await page.getByRole("button", { name: /i'm not sure/i }).click();
   await page.getByRole("button", { name: "No, a different day" }).click();
 
   await test.step("stage 3 — recyclingDay (DayPicker, Complete plan — no coverage warning)", async () => {
@@ -73,12 +85,6 @@ test("no serious/critical a11y violations across the onboarding flow (mobile)", 
     await assertNoSeriousViolations(page, "stage 3: recyclingDay");
   });
   await page.getByRole("button", { name: "Friday" }).click();
-
-  await test.step("stage 3 — provider (optional text input)", async () => {
-    await expect(page.getByRole("heading", { name: /who collects your trash/i })).toBeVisible();
-    await assertNoSeriousViolations(page, "stage 3: provider");
-  });
-  await page.getByRole("button", { name: /continue/i }).click();
 
   await test.step("stage 3 — hazards (Choice, multi-select)", async () => {
     await expect(page.getByRole("heading", { name: /anything we should plan for/i })).toBeVisible();

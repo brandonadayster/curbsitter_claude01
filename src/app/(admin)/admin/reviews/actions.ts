@@ -20,6 +20,64 @@ const orderReviewSchema = z.object({
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
+const setCollectionDaySchema = z.object({
+  propertyId: z.string().uuid(),
+  weekday: z.coerce.number().int().min(0).max(6),
+  provider: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
+/**
+ * D-025/D-027: resolve a collection day the customer didn't know and the
+ * City's published zones don't cover — the admin looks the address up in the
+ * hauler's own schedule tool and records the answer here. Without this the
+ * property has no weekday, so no visit can ever be scheduled for it.
+ */
+export async function setCollectionDay(formData: FormData): Promise<void> {
+  const session = await assertRole(["admin", "dispatcher"]);
+
+  const parsed = setCollectionDaySchema.safeParse({
+    propertyId: formData.get("propertyId"),
+    weekday: formData.get("weekday"),
+    provider: formData.get("provider"),
+  });
+  if (!parsed.success) throw new Error("Invalid collection day.");
+
+  const supabase = createSupabaseAdminClient();
+  const { data: schedule, error: loadError } = await supabase
+    .from("collection_schedules")
+    .select("id, weekday, verification_status, needs_review_reason")
+    .eq("property_id", parsed.data.propertyId)
+    .eq("waste_stream", "trash")
+    .maybeSingle();
+  if (loadError || !schedule) throw new Error("Collection schedule not found.");
+
+  const { error: updateError } = await supabase
+    .from("collection_schedules")
+    .update({
+      weekday: parsed.data.weekday,
+      verification_status: "verified",
+      needs_review_reason: null,
+      ...(parsed.data.provider ? { provider: parsed.data.provider } : {}),
+    })
+    .eq("id", schedule.id);
+  if (updateError) throw new Error(`Collection day update failed: ${updateError.message}`);
+
+  await auditLog({
+    actorId: session.userId,
+    action: "collection_schedule.set_day",
+    entity: "collection_schedules",
+    entityId: schedule.id,
+    before: {
+      weekday: schedule.weekday,
+      verification_status: schedule.verification_status,
+      needs_review_reason: schedule.needs_review_reason,
+    },
+    after: { weekday: parsed.data.weekday, verification_status: "verified", needs_review_reason: null },
+  });
+
+  revalidatePath("/admin/reviews");
+}
+
 /**
  * Serviceability review decision (D-018): approval activates the property and
  * subscription; decline marks both declined and the refund/alternative-quote
