@@ -46,6 +46,33 @@ Create separate test/staging/production resources for Supabase, Stripe, email, S
 
 Copy `.env.example` to `.env.local` and fill only test values. The agent must document every added variable.
 
+### Mapbox — two tokens, not one
+
+Maps and geocoding need **different** tokens, because they run in different places:
+
+| Variable | Used by | Must be |
+|---|---|---|
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Map tiles in the browser (`src/components/map/map-base.tsx`) | Public `pk.`, **URL-restricted** to your origins |
+| `MAPBOX_SERVER_TOKEN` | Geocoding (`src/lib/geocode.ts`, all callers server-side) | Public `pk.`, **NOT URL-restricted** |
+
+Why they can't be the same token: a URL-restricted token is validated against the
+request's `Referer` header. Server-side calls don't send one, so a restricted token
+returns **403 Forbidden** for geocoding — and `geocode()` returns `null` on failure,
+so this looks *identical* to "no token configured". If addresses silently fail to
+resolve, check this first.
+
+`MAPBOX_SERVER_TOKEN` is deliberately not `NEXT_PUBLIC_` — it must never reach the
+browser bundle, since it carries no URL restriction. Never put an `sk.` secret token
+in either variable.
+
+Both need the default public scopes (`styles:tiles`, `styles:read`, `fonts:read`).
+Restrict the browser token to `localhost:3000`, `localhost:3001`, and your deployed
+domains.
+
+**CSP:** `next.config.ts` must keep `https://api.mapbox.com` in both `connect-src`
+and `img-src`, or the browser blocks the style request and every map silently falls
+back to its table view.
+
 ## Verification
 
 ```bash

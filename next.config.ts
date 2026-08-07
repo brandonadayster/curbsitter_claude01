@@ -6,17 +6,31 @@ const isProd = process.env.NODE_ENV === "production";
  * Content-Security-Policy and secure headers (SECURITY_PRIVACY.md).
  *
  * Browser-side network calls are limited to Supabase (auth, storage signed
- * URLs, realtime). Mapbox geocoding and Resend email are server-side only, so
- * they are deliberately absent from connect-src. `script-src` still allows
- * 'unsafe-inline' because Next.js injects inline bootstrap scripts without a
- * nonce; moving to a nonce-based CSP is a future hardening.
+ * URLs, realtime) and Mapbox. Mapbox *geocoding* is still server-side only —
+ * but Mapbox GL JS renders map tiles in the browser (`map-base.tsx`), so the
+ * tile/style API must be reachable from the page. It was absent here until
+ * 2026-08-07, which meant every map silently fell back to its table view: the
+ * style request was blocked by CSP and surfaced only as "Failed to fetch".
+ *
+ * `script-src` still allows 'unsafe-inline' because Next.js injects inline
+ * bootstrap scripts without a nonce; moving to a nonce-based CSP is a future
+ * hardening.
  */
+
+/**
+ * `api.mapbox.com` serves styles, sprites, fonts and tiles — required.
+ * `events.mapbox.com` is Mapbox's usage telemetry; it is listed so a blocked
+ * request doesn't spam the console, not because the map needs it.
+ */
+const MAPBOX_HOSTS = ["https://api.mapbox.com", "https://events.mapbox.com"];
+
 function buildCsp(): string {
   const supabaseHttp = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseWs = supabaseHttp.replace(/^http/, "ws");
-  const connect = ["'self'", supabaseHttp, supabaseWs].filter(Boolean).join(" ");
+  const connect = ["'self'", supabaseHttp, supabaseWs, ...MAPBOX_HOSTS].filter(Boolean).join(" ");
   // Signed proof-photo URLs are served from Supabase Storage (same origin).
-  const img = ["'self'", "data:", "blob:", supabaseHttp].filter(Boolean).join(" ");
+  // Mapbox marker/sprite bitmaps load as images from the same API host.
+  const img = ["'self'", "data:", "blob:", supabaseHttp, ...MAPBOX_HOSTS].filter(Boolean).join(" ");
 
   const directives = [
     "default-src 'self'",

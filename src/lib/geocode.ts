@@ -40,7 +40,18 @@ interface GeocodeV6Response {
 }
 
 export async function geocode(input: GeocodeInput): Promise<GeocodeHit | null> {
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPS_TOKEN;
+  // `MAPBOX_SERVER_TOKEN` first, and it is not `NEXT_PUBLIC_` on purpose.
+  //
+  // Every caller of this function runs server-side, where there is no
+  // `Referer` header — so a URL-restricted token (the correct kind to ship in
+  // the browser bundle for map tiles) is rejected with 403 here. The two uses
+  // genuinely need different tokens: restricted for the client, unrestricted
+  // for the server. The public vars stay as a fallback so an unrestricted
+  // single-token setup keeps working.
+  const token =
+    process.env.MAPBOX_SERVER_TOKEN ??
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
+    process.env.NEXT_PUBLIC_MAPS_TOKEN;
   if (!token) return null;
 
   const query = encodeURIComponent(`${input.addressLine1}, Prescott area AZ ${input.postalCode}`);
