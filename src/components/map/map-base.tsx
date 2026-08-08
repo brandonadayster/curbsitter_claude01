@@ -63,7 +63,20 @@ export function MapBase({
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
-        onError={() => setFailed(true)}
+        onError={(event) => {
+          const error = event?.error as Error | undefined;
+          // Tearing down a map aborts its worker actors, which surfaces as an
+          // AbortError on any instance still mounted — React's development
+          // double-mount triggers this every time. It says nothing about
+          // whether the map can render, so treating it as fatal used to swap
+          // in the fallback permanently and hide a perfectly working map.
+          if (error?.name === "AbortError") return;
+          // Anything else is worth seeing: the fallback is deliberately quiet,
+          // so without this a real token or style failure looks identical to
+          // "no token configured".
+          console.error("Mapbox failed to initialise:", error?.message ?? event);
+          setFailed(true);
+        }}
         interactiveLayerIds={interactiveLayerIds}
         onClick={onClick}
       >

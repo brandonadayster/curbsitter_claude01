@@ -1,79 +1,92 @@
-# Session handoff — D-024/025/026/027 all landed
+# Session handoff — next up: map layers + route/coverage data
 
 **Date:** 2026-08-05
-**Branch:** `claude/d-027-continuation-67fcdc` (worktree `d-027-continuation-67fcdc`)
-**Last commit:** `d250acc` — "D-024: show a real pickup date at signup, floored for first visits"
-**State:** lint ✅ · typecheck ✅ · 119/120 unit+integration ✅ · 50/50 e2e ✅ · pushed, PR #13 open
+**Main is at:** `4e2c062` (merge of PR #13). Everything from the last session is **merged and main CI is green**.
+**Start from:** a fresh branch off `main`. The `claude/d-027-continuation-67fcdc` branch and worktree are merged and safe to delete.
 
-Plan: `/home/brandon/.claude/plans/clever-humming-diffie.md`. Prior plan (D-024/025/026 context): `/home/brandon/.claude/plans/synthetic-mixing-bear.md`.
-
----
-
-## 1. Branch note (read first)
-
-This branch was created from `main`, not from the D-025/D-026 work, so it originally lacked every prerequisite. It was **rebased onto `claude/next-agenda-item-3accc3`** (tip `715ac82`) at the start of this session. Both branches now share history up to `715ac82`; this branch adds `8bc5629` on top. `claude/next-agenda-item-3accc3` has *not* been updated — don't work in both.
-
-`npm ci` was run here (the worktree had no `next` installed), and `.env.local` was copied from the other worktree.
+Prior work is fully recorded in `TODO.md` and `DECISION_REGISTER.md` (D-024 … D-027) — read those, not a summary here. This doc only carries what those don't.
 
 ---
 
-## 2. What shipped
+## 1. Where things actually stand
 
-**D-027 auto-approval.** `finalizeOnboardingDraft` (`src/lib/onboarding.ts`) gained:
-```ts
-autoApprove = trashReviewReason === null && draft.commercial_check?.status === "residential"
-```
-True → `properties.status='active'`, `subscriptions.status='active'` or `orders.status='approved'` **plus `generateTasksForOrder()`** (parity with `decideOrderReview`), `service_confirmed` notification, and an `auditLog` entry with `actorId: null`. False → completely unchanged from before. Fails safe on any missing/failed/unrecognized state. Hazards never participate.
+D-024/025/026/027 are done. Onboarding now: address → City day lookup at stage 1 → clean signups auto-activate at payment → customer sees a real first-pickup date with a 2-day floor. Admin review only ever holds items with a stated reason.
 
-**D-025a — City lookup moved to stage 1.** New `onboarding_drafts.city_lookup` column (migration `20260805120000`). `verifyCollectionDay` was replaced by `lookupCityWeekday()` (raw I/O) + `combineDayCheck()` (pure classification), so the stage-3 route is now a read-combine-write with no live zone query. Two new `collection_day_check` statuses: `city_resolved` (unsure customer, City supplied the day — treated as verified) and `unsure_no_data` (nobody knows the day — proceeds, admin resolves).
+**Not yet built, and the owner named these as next:** route map layers (this doc), dashboards, runner app polish.
 
-**Admin day resolution.** New `setCollectionDay` server action + inline weekday picker on any queue item missing a day. **Nothing in the app could set a collection day before this** — the "No verified collection day, approving will fail" warning was previously a dead end. Also: review-reason banners (city mismatch / manual-lookup-needed / non-residential) and a `commercial_check` join by account.
+## 2. The new request — multiple map layers
 
-**WM rejected.** Investigated live. `rest-api.wm.com/account/search` → `/services` → `/pickupinfo`, requires a Google Place ID (we use Mapbox), returns `401 UnauthorizedException` without an Okta token. It's an access-controlled private API returning third-party *customer account* records — categorically different from the City's open zone polygons. Owner chose manual admin lookup instead. Recorded as D-025a; **do not revisit without documented granted access from the hauler.**
+Owner wants these layers, and as the **first deliverable**, residential property counts per collection-day polygon.
 
----
+I researched feasibility live this session. Findings below are verified against the real services, not assumed.
 
-## 3. Bug fixed in passing (important)
+### The headline answer (already obtained — verified 2026-08-05)
 
-`draftView` (`src/lib/onboarding.ts`) re-parsed `stage3` with `stage3Schema` *after* the PATCH route had split `accessSecretNotes` into the `access_secrets` column — so D-026's gate/garage minimum-length rule failed for **every gated property, at stage 3, before payment.** Signup was impossible for anyone with a gate or garage.
+Residential parcels intersecting the City's 16 collection-day zones:
 
-This is the same trap the last handoff flagged and fixed in `finalizeOnboardingDraft` — `draftView` was missed. **Any future stage3 validation touching `accessSecretNotes` must re-check both call sites.**
+| Collection day | Residential parcels |
+|---|---|
+| Monday | 5,197 |
+| Tuesday | 6,573 |
+| Wednesday | 5,966 |
+| Thursday | 4,506 |
+| **Total** | **22,242** |
 
----
+Per-zone (the "singular polygon" number the owner asked for), zone `OBJECTID` → count:
+Mon: 3,632 / 1,374 / 157 / 34 · Tue: 2,970 / 2,303 / 1,229 / 71 · Wed: 3,849 / 1,041 / 654 / 420 / 1 / 1 · Thu: 2,723 / 1,783
 
-## 4. Public claims corrected
+**Three things to know about these numbers before quoting them to anyone:**
+1. **There is no Friday collection day.** The City runs Mon–Thu only. Any UI, capacity model, or route plan assuming a 5-day week is wrong.
+2. They're `esriSpatialRelIntersects` counts, so a parcel straddling a zone border is counted in both. Total is 22,242 vs 22,113 residential parcels in the layer — **~129 double-counted**. For an exact figure, do centroid point-in-polygon (we already have `pointInCellGeometry` in `src/lib/geo.ts`).
+3. "Residential" = the same `USAGE_TYPE` set `src/lib/property-usage-check.ts` uses (`Residential`, `Duplex`, `Triplex`, `Mobile Home`, `MH Affixed`). Deliberately excludes `Multi-Res` and `MH/RV Park`. Change that set and these numbers change.
 
-Four places asserted every account is reviewed before first service, which D-027 makes false: `/terms` ("Serviceability review"), `src/app/(marketing)/faq/page.tsx`, `src/lib/personas.ts`, and the stage-4 onboarding review card. `/terms` also gained a **"Collection schedule accuracy"** section disclaiming liability for missed collection caused by inaccurate customer-supplied hauler/day info — no public source covers every address in Prescott or Yavapai County. An inline version of that disclaimer sits on the trash-day question.
+**To reproduce / recompute:** `GET` layer 3 with `outFields=*&returnGeometry=true&outSR=4326&f=json` for the 16 zones, then for each zone `POST` to layer 4's `/query` with that zone's `rings` as `geometry`, `geometryType=esriGeometryPolygon`, `inSR=4326`, `spatialRel=esriSpatialRelIntersects`, `returnCountOnly=true`, and `where=USAGE_TYPE IN ('Residential','Duplex','Triplex','Mobile Home','MH Affixed')`. Layer 4 reports `supportsStatistics: true` and `supportsPagination: true` with `maxRecordCount: 2000`, so a full 47,896-parcel ingestion is also viable in ~24 pages if we want the join done locally instead.
 
----
+### Layer-by-layer feasibility
 
-## 5. Verified against live data
+The City service we already use has **more layers than we knew**:
+`services5.arcgis.com/A6QJYdVM7iLWspvE/.../Solid_Waste_Route_Days/FeatureServer`
+→ `0 Address` · `1 Streets` · `2 Major Streets` · `3 Current_Day` · `4 Parcels` · `5 Prescott City Limits`
 
-Using the seeded eligibility check (133 S Cortez St):
-- Stage 1 wrote `city_lookup = {status:'found', cityWeekday:4}` (Thursday — matches the City).
-- The parcel check returned `{status:'flagged', usageType:'Qualified Exmpt', usageDesc:'9270-CHURCH, RELIG USE'}` — that address is a church, correctly **not** auto-approve-eligible.
-- API: unsure → `city_resolved`/4; day 4 → `match`; day 1 → `mismatch`.
-- Browser: "I'm not sure" advanced silently with the day filled in from City data; disclaimer renders; no console errors.
+1. **City of Prescott collection days** — *done.* Layer 3, already synced into `city_route_day_zones` (16 polygons) by `scripts/sync-city-route-days.mjs`. Nothing new needed to map it.
+2. **City/county boundaries** — Prescott City Limits is layer 5, free. **Yavapai County and the other towns (Prescott Valley, Chino Valley, Dewey-Humboldt) are NOT in this service** and need a county source. `YavapaiCountyGIS` and `yavgis_developers` do publish public ArcGIS feature services (confirmed they exist), but I did not find the specific jurisdiction-boundary layer — that's a focused search for next session.
+3. **Subdivisions** — **already available at zero cost**: `Parcels.SUBNAME` is a subdivision name on every parcel. No new source needed for Prescott. Boundaries can be derived by dissolving parcels on `SUBNAME`, or just used as an attribute/filter.
+4. **HOA / condo associations** — **no HOA field exists** in the parcel data. `SUBNAME` is the closest proxy and is not the same thing. A real source would be the AZ Corporation Commission HOA registry — worth checking, but treat it as unverified until someone does.
+5. **Vacation rentals** — the owner's instinct is right: **nothing in parcel data identifies these.** The realistic avenue is municipal short-term-rental permit registries (AZ requires STR registration), not GIS. Unverified — do not promise this layer until a real source is confirmed.
 
----
+### My answer to "all county, or Prescott only?" (owner asked)
 
-## 6. Known / not done
+**Start Prescott-only, and it costs nothing to do so.** The parcel layer we already query appears scoped to the City service area — essentially all 22,113 of its residential parcels fall inside the 16 City collection zones, which is not what a county-wide layer would look like. So Prescott subdivisions are free today; county-wide subdivisions need the county parcel source that doesn't exist in our stack yet (that's PP-11, below). Doing Prescott first also puts a real layer in front of the owner in one session instead of blocking on a data-ingestion project.
 
-- **PP-05 referral drift** — `tests/integration/referrals.test.ts:84` expects `1000`, `business.ts` says `2000`. Pre-existing, fails every run, tracked as `task_5db3b98d`. Don't chase.
-- **D-026 cleanup — done** (commit after `8bc5629`): hazards block + `property_hazards` join removed from the admin review page, `requiresAccessReview` retired end to end.
-- **D-024 — done** (`d250acc`). Floor confirmed at **2 days**. It governs both the displayed date and `generateTasksForOrder`'s booked date via one shared `firstPickupDate()`, so they can't diverge. Reschedule is deliberately unfloored.
-- **`ACCESS_SECRET_MIN_LENGTH = 10`** — still an arbitrary placeholder.
-- **A fail-open worth knowing:** a draft with no `collection_day_check` at all (private-hauler skip, or a failed check the client swallowed) plus a residential parcel **will auto-approve** on the customer's self-reported day. This is the approved design for private haulers, but a transient check failure lands in the same bucket. If that becomes a concern, the fix is a distinct `check_failed` status on `CityLookup`.
-- **Stage-1 latency** — draft creation now waits on a live ArcGIS parcel query (8s timeout, parallel with the zone lookup). Fast in practice; worst case adds real delay to the signup path.
-- The City ArcGIS reuse terms are still unconfirmed with City of Prescott Solid Waste.
-- Holiday collection shifts still unmodeled.
+The county boundary itself (layer 2) is worth doing early and separately, because it gates the **waitlist eligibility rule** the owner described: Yavapai County residents, plus anyone within **2 miles of the county line**. That 2-mile buffer is a real geometry operation, not a filter — note there's a `buffer_tool` available in the Mapbox MCP server if useful.
 
----
+## 3. Traps and gaps that will bite the next session
 
-## 7. Environment
+- **Mapbox is now configured and the maps genuinely render** (verified in a real browser, Prescott/Prescott Valley/Dewey-Humboldt tiles + property pin). Two tokens are required and they are not interchangeable — see the Mapbox section of `ENV_SETUP.md`. Two bugs were fixed to get there: the CSP omitted `api.mapbox.com`, so **no map had ever worked in a browser**, and `MapBase.onError` swallowed every error, so the failure was indistinguishable from "no token". Note the in-app Claude browser pane cannot reach external hosts at all, so map work must be verified in real Chrome.
+- **`Day_of_Service` is a day *name* string ("Thursday"), not a number.** `scripts/sync-city-route-days.mjs` hard-fails on anything else. Also, the zone layer has several confusable fields — `FID_current_day_dissolve`, `PreviousDay`, `FID_ProposedDayBoundaries`, `DayChange`. I initially read the wrong one and produced plausible-but-wrong day labels. **Match `Day_of_Service` exactly.**
+- **`PreviousDay` / `DayChange` exist**, which means the City has changed collection days before. Our monthly sync will silently pick up a change. Nobody has decided what happens to an existing customer whose day moves.
+- **Geometry is `jsonb`, not PostGIS** (`route_cells.geometry`, `city_route_day_zones.geometry`) — deliberate for MVP. Point-in-polygon is `pointInCellGeometry` in JS. A 22k-parcel spatial join is fine as a batch job; it is not something to run per-request.
+- **A heatmap was explicitly rejected** in `docs/adr/0002` in favour of native Mapbox GL clustering (PP-07). Don't reintroduce it.
+- **PP-11** (Yavapai County parcel ingestion into `route_cells.geometry`) is the real prerequisite for county-wide anything, and is plan-mode gated.
+- **City ArcGIS reuse terms are still unconfirmed** with City of Prescott Solid Waste. We now lean on this service for onboarding *and* would lean on it for maps. Worth resolving before it's load-bearing in production.
+- **Do not revisit WM (Waste Management) scraping.** Investigated and rejected last session; recorded as D-025a. Their API is access-controlled (401 without an Okta token), keyed by Google Place ID, and returns third-party customer account records. Not without documented granted access.
 
-- Local Supabase running; all migrations applied; 16 City zones cached.
-- **`service_confirmed` was inserted into `notification_templates` by hand** on this local DB, because the migration had already run before that insert was added to it. A fresh `supabase db reset` applies it properly. `notification_outbox.template_id` is a FK, so a missing template row silently drops the notification.
-- No Mapbox token, so a fresh address geocodes to null → `geocode_failed`. Use the seeded `eligibility_checks` row `11ef9ae2-edad-4898-bd68-c71002475809` (133 S Cortez St, City day = Thursday) to exercise real paths.
+## 4. Placeholders still awaiting a real number
+
+- `ACCESS_SECRET_MIN_LENGTH = 10` — arbitrary, never confirmed.
+- HOA/Enterprise property-count threshold ("5 or 10 properties") — **not coded anywhere**; `COMMUNITY_PORTFOLIO` only has `pricing: custom_quote`.
+
+## 5. Known-broken / accepted
+
+- **`tests/integration/referrals.test.ts:84`** expects `1000`, `business.ts` says `2000` (D-014 reverted to $20 on 2026-07-31, test never updated). Fails every run. Pre-existing, tracked as `task_5db3b98d`. **Don't chase it — but it does mean "1 failed" is the expected clean state**, so don't assume you broke something.
+- **Task screen doesn't refresh its proof indicator after a background photo-queue drain.** Real UX gap, found while fixing the queue; deliberately left alone. The queue itself is correct and tested.
+- Holiday collection shifts are unmodelled — the City shifts days for holidays via per-holiday toggles the ArcGIS layer doesn't carry. Our synced day will be wrong those weeks.
+
+## 6. Environment
+
+- Local Supabase running; all migrations applied; 16 City zones cached in `city_route_day_zones`.
+- `npm run sync:city-route-days` is idempotent and safe to re-run.
 - Dev users, password `devpassword123`: `admin@` / `runner@` / `customer@curbsitter.test`.
-- Dev server was stopped at end of session (PP-15).
+- `.env.local` was copied from the `next-agenda-item-3accc3` worktree; a fresh worktree needs `npm ci` and that file.
+- Dev server stopped at end of session (PP-15 standing practice).
+- The GitHub Actions sync workflow still needs real prod `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` secrets before it can run.
