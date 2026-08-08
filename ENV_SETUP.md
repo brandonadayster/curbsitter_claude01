@@ -46,28 +46,34 @@ Create separate test/staging/production resources for Supabase, Stripe, email, S
 
 Copy `.env.example` to `.env.local` and fill only test values. The agent must document every added variable.
 
-### Mapbox — two tokens, not one
+### Mapbox
 
-Maps and geocoding need **different** tokens, because they run in different places:
+Two variables, because maps and geocoding run in different places:
 
-| Variable | Used by | Must be |
+| Variable | Used by | Runs |
 |---|---|---|
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Map tiles in the browser (`src/components/map/map-base.tsx`) | Public `pk.`, **URL-restricted** to your origins |
-| `MAPBOX_SERVER_TOKEN` | Geocoding (`src/lib/geocode.ts`, all callers server-side) | Public `pk.`, **NOT URL-restricted** |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Map tiles (`src/components/map/map-base.tsx`) | Browser |
+| `MAPBOX_SERVER_TOKEN` | Geocoding (`src/lib/geocode.ts` — every caller) | Server |
 
-Why they can't be the same token: a URL-restricted token is validated against the
+**Local dev:** one unrestricted public (`pk.`) token in both variables is fine, and
+is how this repo is currently set up.
+
+**The trap — URL restrictions.** A URL-restricted token is validated against the
 request's `Referer` header. Server-side calls don't send one, so a restricted token
-returns **403 Forbidden** for geocoding — and `geocode()` returns `null` on failure,
-so this looks *identical* to "no token configured". If addresses silently fail to
-resolve, check this first.
+returns **403 Forbidden** for geocoding. Because `geocode()` returns `null` on
+failure, that looks *identical* to "no token configured" — silently unresolved
+addresses, no error. If addresses stop geocoding, check this first.
 
-`MAPBOX_SERVER_TOKEN` is deliberately not `NEXT_PUBLIC_` — it must never reach the
-browser bundle, since it carries no URL restriction. Never put an `sk.` secret token
-in either variable.
+So a URL-restricted token can only ever be the *browser* one, never the server one.
+
+**Production.** Prefer two separate tokens: a URL-restricted one for
+`NEXT_PUBLIC_MAPBOX_TOKEN` (it ships in the client bundle, where anyone can read it —
+the restriction is what stops a lifted token being spent against your quota), and an
+unrestricted one for `MAPBOX_SERVER_TOKEN`. `MAPBOX_SERVER_TOKEN` is deliberately not
+`NEXT_PUBLIC_` so it never reaches the bundle. Never put an `sk.` secret token in
+either variable.
 
 Both need the default public scopes (`styles:tiles`, `styles:read`, `fonts:read`).
-Restrict the browser token to `localhost:3000`, `localhost:3001`, and your deployed
-domains.
 
 **CSP:** `next.config.ts` must keep `https://api.mapbox.com` in both `connect-src`
 and `img-src`, or the browser blocks the style request and every map silently falls
